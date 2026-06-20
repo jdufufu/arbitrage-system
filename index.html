@@ -13,7 +13,7 @@
     height: 100vh;
     height: 100dvh;
     width: 100vw;
-    width: 100dvw;
+    width: 10dvw;
     overflow: hidden;
     background: #ffffff;
     color: #111;
@@ -551,6 +551,10 @@ let currentPrice = 124.0204;
 let candleHistory = [];
 let activePosition = null;
 
+// Sizing variables
+let W=0,H=0,DPR=window.devicePixelRatio||1;
+let mouse = {x:-1,y:-1,inside:false};
+
 function timeET(ms){
   const d = new Date(ms || Date.now());
   return d.toLocaleString('en-US',{
@@ -734,8 +738,6 @@ function renderLog(data) {
 /* ---------- CHART DRAW LOGIC ---------- */
 const cvs = $('chart');
 const ctx = cvs.getContext('2d');
-let W=0,H=0,DPR=window.devicePixelRatio||1;
-let mouse = {x:-1,y:-1,inside:false};
 
 function resize(){
   const r = cvs.getBoundingClientRect();
@@ -748,6 +750,12 @@ cvs.addEventListener('mousemove',e=>{const r=cvs.getBoundingClientRect();mouse.x
 cvs.addEventListener('mouseleave',()=>{mouse.inside=false;});
 
 function drawChart(candles, px, activePos){
+  // DYNAMIC SIZING FIX: Re-measure the canvas layout dynamically if uninitialized or size shifts
+  const r = cvs.getBoundingClientRect();
+  if (r.width !== W || r.height !== H || W < 50 || H < 50) {
+    resize();
+  }
+
   ctx.clearRect(0,0,W,H);
   const padL=8, padR=60, padT=45, padB=20; 
   const cw = W-padL-padR, ch = H-padT-padB;
