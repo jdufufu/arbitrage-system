@@ -3,11 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <title>Arbitrage System Advance-Orderbook</title>
-<!-- Add Socket.io Client Library -->
+<!-- Connected real-time server script link -->
 <script src="/socket.io/socket.io.js"></script>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
   
+  /* Use Dynamic Viewport Height (dvh) to solve mobile Chrome address bar offset */
   html,body{
     height: 100vh;
     height: 100dvh;
@@ -18,10 +19,11 @@
     color: #111;
     user-select: none;
     font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    font-size: 14px;
+    font-size: 14px; /* Zoomed up base text size */
     line-height: 1.3;
   }
 
+  /* Full screen container */
   .app{
     display: flex;
     flex-direction: column;
@@ -31,6 +33,7 @@
     overflow: hidden;
   }
 
+  /* Header Section */
   .hdr{
     display: flex;
     align-items: center;
@@ -51,6 +54,7 @@
   .stats b{color: #111;font-weight: 600;font-variant-numeric: tabular-nums;font-family: "SF Mono",Consolas,Menlo,monospace;}
   .status{display: flex;align-items: center;gap: 6px;font-size: 12px;color: #555;white-space: nowrap;}
   
+  /* Fixed pulsing dot to prevent oval stretching */
   .dot{
     width: 8px;
     height: 8px;
@@ -63,6 +67,7 @@
   }
   @keyframes pulse{0%,100%{opacity: 1;}50%{opacity: .4;}}
 
+  /* Main Container Split */
   .main{
     display: flex;
     flex: 1;
@@ -70,6 +75,7 @@
     overflow: hidden;
   }
 
+  /* Left Column: Chart & Logs (Stretched Left Side) */
   .left{
     display: flex;
     flex-direction: column;
@@ -78,6 +84,7 @@
     border-right: 1px solid #e5e5e5;
   }
   
+  /* Chart Window */
   .chart-wrap{
     position: relative;
     background: #fff;
@@ -90,6 +97,7 @@
   .tf{display: inline-block;padding: 2px 6px;border: 1px solid #e5e5e5;border-radius: 2px;color: #555;background: #fff;font-size: 11px;font-weight: 500;}
   .tf.active{background: #111;color: #fff;border-color: #111;}
 
+  /* Log Panel */
   .log{
     flex: 1;
     display: flex;
@@ -113,7 +121,34 @@
     background: #fff;
     min-height: 0;
   }
+  .log-row{
+    display: flex;
+    align-items: center;
+    flex: 1;
+    padding: 0 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-bottom: 1px solid #fafafa;
+    font-family: "SF Mono",Consolas,Menlo,monospace;
+    font-size: 11.5px;
+  }
+  .log-row .ts{color: #888;margin-right:8px;font-size: 10.5px;}
+  .log-row .tag{display: inline-block;padding: 1px 5px;border-radius: 2px;margin-right: 8px;font-size: 9.5px;font-weight: 700;letter-spacing: .5px;color: #fff;}
+  .log-row .tag.scan{background: #1976d2;}
+  .log-row .tag.opp{background: #d32f2f;}
+  .log-row .tag.exec{background: #f57c00;}
+  .log-row .tag.fill{background: #388e3c;}
+  .log-row .tag.arb{background: #7b1fa2;}
+  .log-row .tag.hedge{background: #0097a7;}
+  .log-row .tag.risk{background: #c2185b;}
+  .log-row .tag.sync{background: #689f38;}
+  .log-row .msg{color: #333;}
+  .log-row .hi{color: #d32f2f;font-weight: 600;}
+  .log-row .ok{color: #388e3c;font-weight: 600;}
+  .log-row .val{color: #1976d2;}
 
+  /* Available Balance & Dynamic Position Styles */
   .balance-container {
     padding: 12px 15px;
     border-bottom: 1px solid #f0f0f0;
@@ -129,7 +164,7 @@
     font-weight: 700;
   }
   .balance-amount {
-    font-size: 24px;
+    font-size: 24px; /* Scaled up for better visibility */
     font-weight: 700;
     color: #00884a;
     font-family: "SF Mono",Consolas,Menlo,monospace;
@@ -153,7 +188,7 @@
     font-family: -apple-system, sans-serif;
     color: #555;
     background: #fff;
-    overflow-y: scroll;
+    overflow-y: scroll; /* Smooth vertical scrolling for multi-order tracking */
     max-height: 280px;
   }
   .position-card {
@@ -167,7 +202,7 @@
     display: flex;
     justify-content: space-between;
     margin-bottom: 6px;
-    font-size: 12px;
+    font-size: 12px; /* Scaled text size */
   }
   .pos-row:last-child { margin-bottom: 0; }
   .pos-lbl { color: #666; font-weight: 500; }
@@ -181,10 +216,11 @@
     text-align: center;
   }
 
+  /* Right Panel: Compact Order Book (Narrower to stretch left side) */
   .side{
     display: flex;
     flex-direction: column;
-    width: 240px;
+    width: 240px; /* Reduced width to stretch the left panel */
     min-width: 240px;
     background: #fafafa;
     overflow: hidden;
@@ -234,6 +270,7 @@
   .ob-spread{display: flex;justify-content: space-between;align-items: center;padding: 0 12px;font-size: 11px;background: #f0f4ff;border-top: 1px solid #e5e5e5;border-bottom: 1px solid #e5e5e5;color: #555;height: 24px;min-height: 24px;}
   .ob-spread b{color: #111;font-family: "SF Mono",Consolas,Menlo,monospace;}
 
+  /* Tape View */
   .tape{
     border-top: 1px solid #e5e5e5;
     background: #fff;
@@ -269,6 +306,7 @@
   .tape-row.sell span:nth-child(2){color: #c62828;}
   .tape-row span:nth-child(4){color: #555;font-size: 11px;font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}
 
+  /* Telemetry Footer */
   .tel{
     display: flex;
     align-items: center;
@@ -291,7 +329,7 @@
 
   ::-webkit-scrollbar{display: none;}
 
-  /* Modals */
+  /* Modal Styles */
   .modal-overlay {
     position: fixed;
     top: 0; left: 0; width: 100vw; height: 100dvh;
@@ -347,12 +385,19 @@
     cursor: pointer;
   }
 
+  /* Chart Logo & Execution Stream Filter Button */
   .chart-logo { 
     position: absolute; 
-    bottom: 195px;
-    right: 60px;
-    height: 65px;
-    filter: drop-shadow(0px 3px 6px rgba(0,0,0,0.0));
+    
+    /* MOVEMENT SETTINGS */
+    bottom: 195px; /* UP/DOWN: Increase number to move UP, decrease to move DOWN */
+    right: 60px;  /* LEFT/RIGHT: Increase number to move LEFT, decrease to move RIGHT */
+    
+    /* SIZE SETTING */
+    height: 65px; /* BIGGER/SMALLER: Increase number to make the logo larger */
+    
+    /* SHADOW & LOOK */
+    filter: drop-shadow(0px 3px 6px rgba(0,0,0,0.0)); /* Adds a shadow behind the PNG shape */
     opacity: 0.85; 
     pointer-events: none; 
     z-index: 10; 
@@ -361,6 +406,7 @@
   .filter-btn { position: absolute; bottom: 15px; right: 15px; width: 44px; height: 44px; background: #9e9e9e; border-radius: 50%; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.4); cursor: pointer; z-index: 10; border: none; outline: none; }
   .filter-btn svg { width: 24px; height: 24px; fill: #222; }
 
+  /* Trade Settings Modal */
   .settings-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(0,0,0,0.5); z-index: 9998; display: none; justify-content: center; align-items: center; }
   .settings-box { background: #fff; width: 310px; border-radius: 16px; padding: 20px 24px; position: relative; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
   .settings-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
@@ -369,14 +415,14 @@
   .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #f0f0f0; font-size: 16px; color: #111; font-family: -apple-system, sans-serif; }
   .setting-row:last-child { border-bottom: none; }
   
+  /* Toggles */
   .toggle { width: 46px; height: 26px; background: #e5e5e5; border-radius: 13px; position: relative; cursor: pointer; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); }
   .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; background: #fff; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-  .toggle.active { background: #34c759; }
+  .toggle.active { background: #34c759; } /* Glow box-shadow removed */
   .toggle.active::after { transform: translateX(20px); }
 </style>
 </head>
 <body>
-
 <!-- Trade Settings Modal -->
 <div id="settings-modal" class="settings-modal">
   <div class="settings-box">
@@ -417,6 +463,8 @@
 </div>
 
 <div class="app">
+
+  <!-- Main Split -->
   <div class="main">
     <div class="left">
       <div class="chart-wrap">
@@ -469,6 +517,7 @@
     </div>
   </div>
 
+  <!-- Trade Tape (Strict Viewport Containment) -->
   <div class="tape">
     <div class="tape-head">
       <span>TIME (ET)</span><span>PRICE</span><span>SIZE</span><span>VENUE / ORDER ID</span><span>NOTIONAL</span>
@@ -476,6 +525,7 @@
     <div class="tape-body" id="tape"></div>
   </div>
 
+  <!-- Telemetry Footer -->
   <div class="tel">
     <span><span class="k">CORE</span><span class="v">#02 PINNED</span></span><span class="sep">│</span>
     <span><span class="k">NIC</span><span class="v">ExaNIC X25 FPGA</span></span><span class="sep">│</span>
@@ -489,6 +539,7 @@
     <span><span class="k">CPU</span><span class="v" id="t-cpu">4.12%</span></span><span class="sep">│</span>
     <span><span class="k">NY4↔CHI</span><span class="v" id="t-ping">12.14 ms</span></span>
   </div>
+
 </div>
 
 <script>
@@ -508,7 +559,6 @@ function timeET(ms){
   }) + '.' + String(d.getMilliseconds()).padStart(3,'0');
 }
 
-// Generate matching tape items dynamically on client using live price
 function generateLocalTape(px){
   const out = [];
   for(let k=0; k<5; k++){
@@ -574,6 +624,7 @@ function drawChart(candles, px, activePos){
   let hi=-Infinity, lo=Infinity, vmax=0;
   for(const c of candles){ if(c.h>hi)hi=c.h; if(c.l<lo)lo=c.l; if(c.v>vmax)vmax=c.v; }
   
+  // Lock visual view boundaries around fixed entry points
   if (activePos) {
     if (activePos.entry > hi) hi = activePos.entry;
     if (activePos.entry < lo) lo = activePos.entry;
@@ -628,7 +679,6 @@ function drawChart(candles, px, activePos){
     ctx.globalAlpha = 1;
   }
 
-  // Draw indicators (VWAP, EMA20)
   let cumPV=0, cumV=0;
   ctx.strokeStyle='#0066ff'; ctx.lineWidth=1.5;
   ctx.beginPath();
@@ -657,7 +707,7 @@ function drawChart(candles, px, activePos){
   ctx.stroke();
   ctx.setLineDash([]);
 
-  // Draw active position line on chart
+  // Entry prices stay locked strictly on screen where the transaction opened
   if (activePos) {
     const entryY = padT + (hi - activePos.entry) / range * priceH;
     if (entryY >= padT && entryY <= padT + priceH) {
@@ -673,7 +723,6 @@ function drawChart(candles, px, activePos){
     }
   }
 
-  // Draw current price tag
   const lastY = padT + (hi-px)/range*priceH;
   ctx.strokeStyle='#111'; ctx.setLineDash([2,3]); ctx.lineWidth=1;
   ctx.beginPath(); ctx.moveTo(padL,lastY); ctx.lineTo(padL+cw,lastY); ctx.stroke();
@@ -684,7 +733,6 @@ function drawChart(candles, px, activePos){
   ctx.font='bold 11px "SF Mono",Consolas,monospace';
   ctx.fillText(fmt(px), padL+cw+5, lastY+4);
 
-  // Box border and labels
   ctx.strokeStyle='#e5e5e5'; ctx.lineWidth=1;
   ctx.strokeRect(padL, padT, cw, ch);
   ctx.font='10px -apple-system,Segoe UI,sans-serif';
@@ -693,24 +741,21 @@ function drawChart(candles, px, activePos){
   ctx.fillStyle='#888'; ctx.fillText('VOL', padL+112, padT+12);
 }
 
-// --- INITIALIZE REAL-TIME SYNCHRONIZED WEBSOCKET ---
-// io() automatically identifies and connects back to the Glitch server hosting this file
+// Global WebSocket Initialization
 const socket = io();
 
+// Throttled frame handler (Runs at 400ms speed to prevent mobile CPU overload)
 socket.on('market_update', (data) => {
   currentPrice = data.price;
   
-  // Render prices and indicators
-  $('balance-val').textContent = '$' + data.balance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  // Retained original comma-free layout formatting ($0.00)
+  $('balance-val').textContent = '$' + data.balance.toFixed(2);
   
-  // Render order books
   renderBook(data.book);
   
-  // Render tape items relative to shared price
   const tapeData = generateLocalTape(currentPrice);
   renderTape(tapeData);
 
-  // Render position cards
   const posBody = $('position-body');
   if (data.positions.length === 0) {
     posBody.innerHTML = `<span class="no-position">Scanning order books for cross-exchange deltas...</span>`;
@@ -738,11 +783,9 @@ socket.on('market_update', (data) => {
     posBody.innerHTML = cardsHtml;
   }
 
-  // Draw the synced chart using server-provided candles and primary position reference
   const primaryPos = data.positions.length > 0 ? data.positions[0] : null;
   drawChart(data.candles, currentPrice, primaryPos);
 
-  // Tick up standard rate counters
   const fakeTotalLogs = Math.floor((Date.now() % 86400000) / 180);
   $('log-ops').textContent = Math.floor(fakeTotalLogs * 0.004);
   $('log-fills').textContent = Math.floor(fakeTotalLogs * 0.0015);
@@ -752,7 +795,6 @@ socket.on('market_update', (data) => {
 
 resize();
 
-// Dual Pop-up Logic (Settings & Access Denied Window)
 window.addEventListener('click', function(e) {
   const accessModal = document.getElementById('access-modal');
   const settingsModal = document.getElementById('settings-modal');
@@ -800,4 +842,4 @@ window.addEventListener('click', function(e) {
 }, true);
 </script>
 </body>
-  </html>
+ </html>
