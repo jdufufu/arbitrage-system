@@ -7,17 +7,15 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Serve your index.html file to visitors
 app.use(express.static(path.join(__dirname)));
 
-// --- SHARED DATA STATE ---
-let globalBalance = 120192307.45; // Approx $120M starting balance
+let globalBalance = 120192307.45; 
 let currentPrice = 124.0204;
 let candleHistory = [];
 let activePositions = [];
 let lastCandleTime = Math.floor(Date.now() / 2000) * 2000;
 
-// Initialize starting candles (48 candles)
+// Initialize candles
 for (let i = 0; i < 48; i++) {
   candleHistory.push({
     o: 124.0204,
@@ -29,17 +27,7 @@ for (let i = 0; i < 48; i++) {
   });
 }
 
-// Math generator helper (mulberry32 algorithm)
-function serverSeed(a) {
-  return function() {
-    a |= 0; a = a + 0x6D2B79F5 | 0;
-    let t = Math.imul(a ^ a >>> 15, 1 | a);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  }
-}
-
-// Generate a synchronized L3 order book based on the current price
+// Generate shared depth book
 function generateSharedBook(px) {
   const t = Date.now() * 0.025;
   const asks = [], bids = [];
@@ -65,35 +53,32 @@ function generateSharedBook(px) {
   return { asks, bids };
 }
 
-// --- CENTRAL EMULATION LOOP ---
-// Runs 5 times per second to update all connected users smoothly
+// 24/7 Server Game Loop
 setInterval(() => {
   const now = Date.now();
   const currentCandleTime = Math.floor(now / 2000) * 2000;
 
-  // 1. Manage active positions and balance jumps
   let balanceJump = 0;
   
-  // Track active real-time positions
+  // Track active positions with static entry prices
   activePositions = activePositions.filter(t => {
     const elapsed = now - t.start;
     if (elapsed >= t.duration) {
-      balanceJump += t.targetProfit; // Add or subtract profit globally on completion
+      balanceJump += t.targetProfit; 
       return false;
     }
     return true;
   });
 
-  // Accumulate balance changes
   if (balanceJump !== 0) {
     globalBalance += balanceJump;
   }
 
-  // 2. Spawn simulated active positions if empty or randomly (Max 6 active cards)
-  if (activePositions.length < 6 && Math.random() < 0.15) {
+  // Spawn positions with locked entry prices
+  if (activePositions.length < 5 && Math.random() < 0.12) {
     const coins = ['Coin-39', 'Coin-49', 'Coin-5', 'Coin-12', 'Coin-74', 'Asset-8'];
     const assetSelected = coins[Math.floor(Math.random() * coins.length)];
-    const duration = Math.random() * 900 + 1100;
+    const duration = Math.random() * 1000 + 1500;
     const isLoss = Math.random() < 0.35;
     const targetProfit = isLoss 
       ? -parseFloat((Math.random() * 5.00 + 1.00).toFixed(2)) 
@@ -102,7 +87,7 @@ setInterval(() => {
     activePositions.push({
       id: 'ARB-' + Math.floor(Math.random() * 9000 + 1000),
       asset: assetSelected,
-      entry: currentPrice,
+      entry: currentPrice, // Lock the entry price right here
       type: Math.random() < 0.5 ? 'BUY' : 'SELL',
       duration: duration,
       start: now,
@@ -112,7 +97,7 @@ setInterval(() => {
     });
   }
 
-  // 3. Update active price ticks based on active positions
+  // Price ticks relative to the locked entry price
   let targetDrift = 0;
   if (activePositions.length > 0) {
     const mainPos = activePositions[0];
@@ -127,14 +112,11 @@ setInterval(() => {
   
   currentPrice += targetDrift;
 
-  // 4. Update the moving candle chart arrays
+  // Manage candles
   if (currentCandleTime > lastCandleTime) {
     const prevClose = candleHistory.length > 0 ? candleHistory[candleHistory.length - 1].c : currentPrice;
     candleHistory.push({
-      o: prevClose,
-      h: prevClose,
-      l: prevClose,
-      c: prevClose,
+      o: prevClose, h: prevClose, l: prevClose, c: prevClose,
       v: 0.4 + Math.random() * 3.2,
       t: currentCandleTime
     });
@@ -151,10 +133,8 @@ setInterval(() => {
     if (currentPrice < lastCandle.l) lastCandle.l = currentPrice;
   }
 
-  // 5. Generate matching Order Book
   const book = generateSharedBook(currentPrice);
 
-  // 6. Broadcast the combined updates to every single user
   io.emit('market_update', {
     price: currentPrice,
     balance: globalBalance,
@@ -165,8 +145,7 @@ setInterval(() => {
 
 }, 200);
 
-// Run on standard Port 3000
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Synchronization Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
