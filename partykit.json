@@ -1,0 +1,5 @@
+{
+  "name": "arbitrage-system",
+  "main": "server.js",
+  "serve": "index.html"
+}
