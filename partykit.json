@@ -1,5 +1,7 @@
 {
+  "$schema": "https://partykit.io/schema.json",
   "name": "arbitrage-system",
   "main": "server.js",
-  "serve": "index.html"
+  "serve": "./index.html",
+  "compatibilityDate": "2023-05-26"
 }
