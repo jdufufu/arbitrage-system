@@ -2,15 +2,10 @@ const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const port = process.env.PORT || 3000;
-
-// Serve static front-end files
-app.use(express.static(path.join(__dirname, 'public')));
-
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
 
 // Central State (Held in memory 24/7)
 let state = {
@@ -118,7 +113,7 @@ setInterval(() => {
     // Update existing candle
     lastCandle.c = state.currentPrice;
     if (state.currentPrice > lastCandle.h) lastCandle.h = state.currentPrice;
-    if (state.currentPrice < lastCandle.l) lastCandle.l = state.currentPrice;
+    if (state.currentPrice < lastCandle.l) lastCandle.l = currentPrice;
   }
 
   // 6. Broadcast updated state to all connected visitors
@@ -137,6 +132,26 @@ setInterval(() => {
   });
 
 }, 150);
+
+// Route for serving the HTML file dynamically
+app.get('/', (req, res) => {
+  if (fs.existsSync(path.join(__dirname, 'hi.html'))) {
+    res.sendFile(path.join(__dirname, 'hi.html'));
+  } else if (fs.existsSync(path.join(__dirname, 'index.html'))) {
+    res.sendFile(path.join(__dirname, 'index.html'));
+  } else if (fs.existsSync(path.join(__dirname, 'public', 'index.html'))) {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  } else {
+    res.status(404).send("HTML file not found. Ensure hi.html or index.html is in your repository.");
+  }
+});
+
+// Serve static assets from the current directory or public directory
+app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname, 'public')));
+
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
 
 // WebSocket client connection handling
 wss.on('connection', (ws) => {
