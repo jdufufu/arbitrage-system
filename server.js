@@ -113,7 +113,7 @@ setInterval(() => {
     // Update existing candle
     lastCandle.c = state.currentPrice;
     if (state.currentPrice > lastCandle.h) lastCandle.h = state.currentPrice;
-    if (state.currentPrice < lastCandle.l) lastCandle.l = currentPrice;
+    if (state.currentPrice < lastCandle.l) lastCandle.l = state.currentPrice;
   }
 
   // 6. Broadcast updated state to all connected visitors
