@@ -543,115 +543,27 @@
 <script>
 const $ = id => document.getElementById(id);
 const fmt = (n,d=2)=> n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+
+// Global state mirrors received from WebSocket
+let liveBalance = 120192307.00;
+let livePriceValue = 124.0204;
+let liveActiveTrades = [];
+
+// Global formatters
 const fmtK = n => n>=1e9?(n/1e9).toFixed(2)+'B':n>=1e6?(n/1e6).toFixed(2)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':n.toFixed(0);
 
+// Global seed constraints
+const EPOCH = 1704067200000;
+const CANDLE_MS = 2000;
+
+// Visible candle count for zoomed-in perspective
+const VISIBLE_CANDLES = 48; 
+
+// Continuous candle storage
 let candleHistory = [];
 let currentPrice = 124.0204;
+let lastCandleTime = 0;
 
-// Auto-detect secure/insecure WebSocket protocols based on the hosted URL
-const wsProtocol = window.location.protocol === "https:" ? "wss://" : "ws://";
-const wsUrl = wsProtocol + window.location.host;
-let socket = new WebSocket(wsUrl);
-
-socket.onmessage = function(event) {
-  const data = JSON.parse(event.data);
-  
-  if (data.type === "INIT" || data.type === "TICK") {
-    currentPrice = data.currentPrice;
-    candleHistory = data.candleHistory;
-
-    // 1. Update Balance UI
-    $('balance-val').textContent = '$' + parseFloat(data.balance).toFixed(2);
-
-    // 2. Render Active Positions Card Stack
-    const posBody = $('position-body');
-    let cardsHtml = '';
-
-    data.activeTrades.forEach(t => {
-      const isProfit = t.currentProfit >= 0;
-      const pnlColorClass = isProfit ? 'up' : 'dn';
-      const pnlSign = isProfit ? '+' : '-';
-      const formattedPnl = `${pnlSign}$${fmt(Math.abs(t.currentProfit))}`;
-      const labelColorClass = t.type === 'BUY' ? 'up' : 'dn';
-
-      cardsHtml += `
-        <div class="position-card" style="margin-bottom: 6px; width: 100%; flex-shrink: 0;">
-          <div class="pos-row" style="font-size: 11px;">
-            <span class="pos-lbl" style="font-weight: bold;">${t.id} · ${t.asset}</span>
-            <span class="pos-val ${labelColorClass}" style="font-weight:bold;">${t.type} ${t.asset}</span>
-          </div>
-          <div class="pos-row" style="font-size: 10.5px; opacity: 0.85;">
-            <span class="pos-lbl">SIZE: ${t.size}</span>
-            <span class="pos-val ${pnlColorClass}">${formattedPnl}</span>
-          </div>
-        </div>
-      `;
-    });
-
-    posBody.innerHTML = cardsHtml || `<span class="no-position">Scanning order books for cross-exchange deltas...</span>`;
-
-    // Update execution stream statistics
-    const now = Date.now();
-    const sessionMs = now % 86400000;
-    const fakeTotalLogs = Math.floor(sessionMs / 180);
-    $('log-ops').textContent = Math.floor(fakeTotalLogs * 0.004);
-    $('log-fills').textContent = Math.floor(fakeTotalLogs * 0.0015);
-    
-    const secRng = mulberry32(seedFor(Math.floor(now/1000)) ^ 0xEE);
-    $('log-rate').textContent = Math.floor(115 + secRng()*20) + ' evt/s';
-    $('ob-rate').textContent = Math.floor(130 + secRng()*15) + ' msg/s';
-
-    // 3. Render Books, Tape, and Chart with the latest state
-    const book = genBook(currentPrice);
-    renderBook(book);
-    renderTape(genTape(currentPrice));
-    drawChart(candleHistory, currentPrice);
-  }
-};
-
-socket.onclose = function() {
-  console.log("WebSocket disconnected. Retrying in 3 seconds...");
-  setTimeout(() => {
-    socket = new WebSocket(wsUrl);
-  }, 3000);
-};
-
-/* ---------- ORDER BOOK AND TAPE GENERATION ---------- */
-const LEVEL_COUNT = 10; 
-function genBook(px){
-  const t = Date.now() * 0.025;
-  const asks=[], bids=[];
-  const macroShift = Math.sin(t * 0.9) * px * 0.00008;
-  const spreadMultiplier = 0.00008 + Math.abs(Math.sin(t * 0.5)) * 0.00018;
-  let aP = px + macroShift + px * spreadMultiplier;
-  let bP = px + macroShift - px * spreadMultiplier;
-  let aT=0, bT=0;
-  for(let i=0; i<LEVEL_COUNT; i++){
-    const jitterAsk = Math.sin(t + i * 1.8) * 1.2 + Math.cos(t * 2.5 - i) * 0.6;
-    const jitterBid = Math.cos(t - i * 1.8) * 1.2 + Math.sin(t * 2.5 + i) * 0.6;
-    const szAsk = Math.max(0.05, 2.5 + jitterAsk * 6.5 + (i * 0.3));
-    const szBid = Math.max(0.05, 2.5 + jitterBid * 6.5 + (i * 0.3));
-    aT += szAsk;
-    asks.push({p: aP + (i * px * 0.00007), s: szAsk, t: aT});
-    bT += szBid;
-    bids.push({p: bP - (i * px * 0.00007), s: szBid, t: bT});
-  }
-  return {asks, bids};
-}
-
-function renderBook(book){
-  const maxT = Math.max(book.asks[book.asks.length-1].t, book.bids[book.bids.length-1].t, 1);
-  $('asks').innerHTML = [...book.asks].reverse().map(a=>{
-    return `<div class="ob-row"><span>${fmt(a.p)}</span><span>${a.s.toFixed(3)}</span><span>${a.t.toFixed(3)}</span><div class="bar" style="width:${(a.t/maxT*100).toFixed(1)}%"></div></div>`;
-  }).join('');
-  $('bids').innerHTML = book.bids.map(b=>{
-    return `<div class="ob-row"><span>${fmt(b.p)}</span><span>${b.s.toFixed(3)}</span><span>${b.t.toFixed(3)}</span><div class="bar" style="width:${(b.t/maxT*100).toFixed(1)}%"></div></div>`;
-  }).join('');
-  const sp = book.asks[0].p - book.bids[0].p;
-  $('spr').textContent = fmt(sp)+' ('+(sp/book.bids[0].p*10000).toFixed(2)+' bps)';
-}
-
-const venues = ['NYSE-ARCA','NSDQ-NMS','BATS-Z','IEX-TP','MEMX-EQ','CBOE-EDGX'];
 function mulberry32(a){
   return function(){
     a |= 0; a = a + 0x6D2B79F5 | 0;
@@ -662,34 +574,165 @@ function mulberry32(a){
 }
 function seedFor(i){ return ((i * 2654435761) >>> 0) ^ 0x9E3779B9; }
 
+// Setup dynamic clock-driven WebSocket
+const wsProtocol = window.location.protocol === "https:" ? "wss://" : "ws://";
+const wsUrl = wsProtocol + window.location.host;
+let socket = new WebSocket(wsUrl);
+
+socket.onmessage = function(event) {
+  const data = JSON.parse(event.data);
+  if (data.type === "INIT" || data.type === "TICK") {
+    liveBalance = data.balance;
+    livePriceValue = data.currentPrice;
+    liveActiveTrades = data.activeTrades;
+    candleHistory = data.candleHistory;
+  }
+};
+
+socket.onclose = function() {
+  console.log("WebSocket disconnected. Retrying...");
+  setTimeout(() => {
+    socket = new WebSocket(wsUrl);
+  }, 3000);
+};
+
+function livePrice(){
+  // Bridge directly to WebSocket live updates
+  currentPrice = livePriceValue;
+  return currentPrice;
+}
+
+function timeET(ms){
+  const d = new Date(ms || Date.now());
+  return d.toLocaleString('en-US',{
+    timeZone:'America/New_York',
+    hour:'2-digit',minute:'2-digit',second:'2-digit',
+    hour12:false
+  }) + '.' + String(d.getMilliseconds()).padStart(3,'0');
+}
+
+const LEVEL_COUNT = 10; 
+
+function genBook(px){
+  const t = Date.now() * 0.025; 
+  const asks=[], bids=[];
+  
+  const macroShift = Math.sin(t * 0.9) * px * 0.00008;
+  const spreadMultiplier = 0.00008 + Math.abs(Math.sin(t * 0.5)) * 0.00018;
+  
+  let aP = px + macroShift + px * spreadMultiplier;
+  let bP = px + macroShift - px * spreadMultiplier;
+  let aT=0, bT=0;
+  
+  for(let i=0; i<LEVEL_COUNT; i++){
+    const jitterAsk = Math.sin(t + i * 1.8) * 1.2 + Math.cos(t * 2.5 - i) * 0.6;
+    const jitterBid = Math.cos(t - i * 1.8) * 1.2 + Math.sin(t * 2.5 + i) * 0.6;
+    
+    const szAsk = Math.max(0.05, 2.5 + jitterAsk * 6.5 + (i * 0.3));
+    const szBid = Math.max(0.05, 2.5 + jitterBid * 6.5 + (i * 0.3));
+    
+    aT += szAsk;
+    asks.push({p: aP + (i * px * 0.00007), s: szAsk, t: aT});
+    
+    bT += szBid;
+    bids.push({p: bP - (i * px * 0.00007), s: szBid, t: bT});
+  }
+  return {asks, bids};
+}
+
+function renderBook(book){
+  const maxT = Math.max(book.asks[book.asks.length-1].t, book.bids[book.bids.length-1].t, 1);
+  const asksRev = [...book.asks].reverse();
+  
+  $('asks').innerHTML = asksRev.map(a=>{
+    const w = (a.t/maxT*100).toFixed(1);
+    return `<div class="ob-row"><span>${fmt(a.p)}</span><span>${a.s.toFixed(3)}</span><span>${a.t.toFixed(3)}</span><div class="bar" style="width:${w}%"></div></div>`;
+  }).join('');
+  
+  $('bids').innerHTML = book.bids.map(b=>{
+    const w = (b.t/maxT*100).toFixed(1);
+    return `<div class="ob-row"><span>${fmt(b.p)}</span><span>${b.s.toFixed(3)}</span><span>${b.t.toFixed(3)}</span><div class="bar" style="width:${w}%"></div></div>`;
+  }).join('');
+  
+  const sp = book.asks[0].p - book.bids[0].p;
+  $('spr').textContent = fmt(sp)+' ('+(sp/book.bids[0].p*10000).toFixed(2)+' bps)';
+  
+  const secRng = mulberry32(seedFor(Math.floor(Date.now()/1000)) ^ 0xBB);
+  $('ob-rate').textContent = Math.floor(130 + secRng()*15) + ' msg/s';
+}
+
+const TAPE_MAX = 5; 
+const venues = ['NYSE-ARCA','NSDQ-NMS','BATS-Z','IEX-TP','MEMX-EQ','CBOE-EDGX'];
+
 function genTape(px){
   const bucket = Math.floor(Date.now()/65);
   const rng = mulberry32(seedFor(bucket) ^ 0xFACE);
   const out = [];
-  for(let k=0; k<5; k++){
-    const r1=rng(),r2=rng(),r3=rng(),r4=rng();
+  for(let k=0; k<TAPE_MAX; k++){
+    const r1=rng(),r2=rng(),r3=rng(),r4=rng(),r5=rng();
     const side = r1<0.5?'buy':'sell';
     const p = px + (r2-0.5)*px*0.0002;
     const sz = r3<0.85 ? r4*2+0.01 : r4*25+2;
-    const venue = venues[Math.floor(rng()*venues.length)];
+    const venue = venues[Math.floor(r5*venues.length)];
     const oid = Math.floor(rng()*0xFFFFFFFF).toString(16).toUpperCase().padStart(8,'0');
-    out.push({t:timeET(Date.now() - k*140), p, s:sz, side, v:venue, id:oid, n:p*sz});
+    const tMs = Date.now() - k*140;
+    out.push({t:timeET(tMs), p, s:sz, side, v:venue, id:oid, n:p*sz});
   }
   return out;
 }
 
 function renderTape(tape){
-  $('tape').innerHTML = tape.map((tr)=>{
+  const el = $('tape');
+  el.innerHTML = tape.map((tr)=>{
     return `<div class="tape-row ${tr.side}"><span>${tr.t}</span><span>${fmt(tr.p)}</span><span>${tr.s.toFixed(4)}</span><span>${tr.v} · ${tr.id}</span><span>${fmtK(tr.n)}</span></div>`;
   }).join('');
 }
 
-function timeET(ms){
-  const d = new Date(ms || Date.now());
-  return d.toLocaleString('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}) + '.' + String(d.getMilliseconds()).padStart(3,'0');
+function renderLog() {
+  const now = Date.now();
+
+  // Draw WebSocket synchronized total profits directly
+  $('balance-val').textContent = '$' + liveBalance.toFixed(2);
+
+  const posBody = $('position-body');
+  let cardsHtml = '';
+
+  // Draw real-time synchronized background card layers directly from backend memory stream
+  liveActiveTrades.forEach(t => {
+    const isProfit = t.currentProfit >= 0;
+    const pnlColorClass = isProfit ? 'up' : 'dn';
+    const pnlSign = isProfit ? '+' : '-';
+    const formattedPnl = `${pnlSign}$${fmt(Math.abs(t.currentProfit))}`;
+    
+    const labelColorClass = t.type === 'BUY' ? 'up' : 'dn';
+    const statusText = t.type === 'BUY' ? `BUY ${t.asset}` : `SELL ${t.asset}`;
+
+    cardsHtml += `
+      <div class="position-card" style="margin-bottom: 6px; width: 100%; flex-shrink: 0;">
+        <div class="pos-row" style="font-size: 11px;">
+          <span class="pos-lbl">${t.id} · ${t.asset}</span>
+          <span class="pos-val ${labelColorClass}" style="font-weight:bold;">${statusText}</span>
+        </div>
+        <div class="pos-row" style="font-size: 10.5px; opacity: 0.85;">
+          <span class="pos-lbl">${t.id === 'ARB-8472' ? 'ENTRY: $' + fmt(t.entry) : 'SIZE: ' + t.size}</span>
+          <span class="pos-val ${pnlColorClass}">${formattedPnl}</span>
+        </div>
+      </div>
+    `;
+  });
+
+  posBody.innerHTML = cardsHtml || `<span class="no-position">Scanning order books for cross-exchange deltas...</span>`;
+  
+  const sessionMs = now % 86400000;
+  const fakeTotalLogs = Math.floor(sessionMs / 180);
+  $('log-ops').textContent = Math.floor(fakeTotalLogs * 0.004);
+  $('log-fills').textContent = Math.floor(fakeTotalLogs * 0.0015);
+  
+  const secRng = mulberry32(seedFor(Math.floor(now/1000)) ^ 0xEE);
+  $('log-rate').textContent = Math.floor(115 + secRng()*20) + ' evt/s';
 }
 
-/* ---------- CANVAS CHART DRAWING ---------- */
+/* ---------- CHART ---------- */
 const cvs = $('chart');
 const ctx = cvs.getContext('2d');
 let W=0,H=0,DPR=window.devicePixelRatio||1;
@@ -709,10 +752,19 @@ function drawChart(candles, px){
   ctx.clearRect(0,0,W,H);
   const padL=8, padR=60, padT=45, padB=20; 
   const cw = W-padL-padR, ch = H-padT-padB;
-  if(cw<50||ch<50 || candles.length<2) return;
+  if(cw<50||ch<50) return;
+  if(candles.length<2) return;
 
-  let hi=-Infinity, lo=Infinity;
-  for(const c of candles){ if(c.h>hi)hi=c.h; if(c.l<lo)lo=c.l; }
+  let hi=-Infinity, lo=Infinity, vmax=0;
+  for(const c of candles){ if(c.h>hi)hi=c.h; if(c.l<lo)lo=c.l; if(c.v>vmax)vmax=c.v; }
+  
+  // Include active trade entry line within view limits
+  const activeMainTrade = liveActiveTrades.find(t => t.id === 'ARB-8472');
+  if (activeMainTrade) {
+    if (activeMainTrade.entry > hi) hi = activeMainTrade.entry;
+    if (activeMainTrade.entry < lo) lo = activeMainTrade.entry;
+  }
+
   const pad = (hi-lo)*0.12;
   hi+=pad; lo-=pad;
   const range = hi-lo;
@@ -720,35 +772,187 @@ function drawChart(candles, px){
   ctx.strokeStyle='#f0f0f0'; ctx.lineWidth=1;
   ctx.font='11px -apple-system,Segoe UI,sans-serif'; 
   ctx.fillStyle='#999';
-  for(let i=0;i<=6;i++){
-    const y = padT + ch*i/6;
+  const gridY = 6;
+  for(let i=0;i<=gridY;i++){
+    const y = padT + ch*i/gridY;
     ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(padL+cw,y); ctx.stroke();
-    ctx.fillText(fmt(hi - range*i/6), padL+cw+5, y+3);
+    const pv = hi - range*i/gridY;
+    ctx.fillText(fmt(pv), padL+cw+5, y+3);
+  }
+  const gridX = 8;
+  for(let i=0;i<=gridX;i++){
+    const x = padL + cw*i/gridX;
+    ctx.beginPath(); ctx.moveTo(x,padT); ctx.lineTo(x,padT+ch); ctx.stroke();
   }
 
   const volH = ch*0.18;
   const priceH = ch - volH - 6;
-  const bw = (cw * 0.85) / candles.length;
-  const bodyW = Math.max(3, bw*0.75);
+  if(vmax===0) vmax=1;
 
+  // Render zoomed candles on the canvas
+  const rightGapPercent = 0.15;
+  const drawWidth = cw * (1 - rightGapPercent);
+  const bw = drawWidth / candles.length;
+  const bodyW = Math.max(3, bw*0.75); 
+  
   for(let i=0; i<candles.length; i++){
     const c = candles[i];
     const x = padL + i*bw + bw/2;
     const up = c.c>=c.o;
     const yO = padT + (hi-c.o)/range*priceH;
     const yC = padT + (hi-c.c)/range*priceH;
+    const yH = padT + (hi-c.h)/range*priceH;
+    const yL = padT + (hi-c.l)/range*priceH;
     ctx.strokeStyle = up?'#00884a':'#c62828';
     ctx.fillStyle = up?'#00884a':'#c62828';
-    ctx.beginPath(); ctx.moveTo(x,padT + (hi-c.h)/range*priceH); ctx.lineTo(x,padT + (hi-c.l)/range*priceH); ctx.stroke();
-    ctx.fillRect(x-bodyW/2, Math.min(yO,yC), bodyW, Math.max(1.5, Math.abs(yC-yO)));
+    ctx.lineWidth = 1.5; 
+    ctx.beginPath(); ctx.moveTo(x,yH); ctx.lineTo(x,yL); ctx.stroke();
+    const yTop = Math.min(yO,yC), bh = Math.max(1.5, Math.abs(yC-yO));
+    ctx.fillRect(x-bodyW/2, yTop, bodyW, bh);
+    const vh = (c.v/vmax)*volH;
+    ctx.globalAlpha = 0.35;
+    ctx.fillRect(x-bodyW/2, padT+priceH+6 + (volH-vh), bodyW, vh);
+    ctx.globalAlpha = 1;
+  }
+
+  let cumPV=0, cumV=0;
+  ctx.strokeStyle='#0066ff'; ctx.lineWidth=1.5;
+  ctx.beginPath();
+  for(let i=0;i<candles.length;i++){
+    const c=candles[i]; cumPV+=(c.h+c.l+c.c)/3*c.v; cumV+=c.v;
+    const vwap = cumV>0? cumPV/cumV : c.c;
+    const x = padL + i*bw + bw/2;
+    const y = padT + (hi-vwap)/range*priceH;
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  const ema = []; let k=2/21;
+  for(let i=0;i<candles.length;i++){
+    const v = candles[i].c;
+    ema.push(i===0?v: v*k + ema[i-1]*(1-k));
+  }
+  ctx.strokeStyle='#ff8a00'; ctx.lineWidth=1.3;
+  ctx.setLineDash([3,3]);
+  ctx.beginPath();
+  for(let i=0;i<ema.length;i++){
+    const x = padL + i*bw + bw/2;
+    const y = padT + (hi-ema[i])/range*priceH;
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  if(ema.length>=20){
+    ctx.strokeStyle='rgba(0,102,255,0.25)'; ctx.lineWidth=1;
+    const upper=[], lower=[];
+    for(let i=0;i<ema.length;i++){
+      if(i<19){upper.push(null);lower.push(null);continue;}
+      let s=0; for(let j=i-19;j<=i;j++) s+=(candles[j].c-ema[i])**2;
+      const sd = Math.sqrt(s/20);
+      upper.push(ema[i]+2*sd); lower.push(ema[i]-2*sd);
+    }
+    ctx.beginPath();
+    let started=false;
+    for(let i=0; i<upper.length; i++){
+      if(upper[i] == null) continue;
+      const x = padL + i*bw + bw/2;
+      const y = padT + (hi-upper[i])/range*priceH;
+      if(!started){ctx.moveTo(x,y);started=true;} else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    ctx.beginPath(); started=false;
+    for(let i=0; i<lower.length; i++){
+      if(lower[i] == null) continue;
+      const x = padL + i*bw + bw/2;
+      const y = padT + (hi-lower[i])/range*priceH;
+      if(!started){ctx.moveTo(x,y);started=true;} else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
   }
 
   const lastY = padT + (hi-px)/range*priceH;
-  ctx.strokeStyle='#111'; ctx.setLineDash([2,3]); ctx.beginPath(); ctx.moveTo(padL,lastY); ctx.lineTo(padL+cw,lastY); ctx.stroke();
-  ctx.setLineDash([]); ctx.fillStyle='#111'; ctx.fillRect(padL+cw, lastY-8, padR-3, 16);
-  ctx.fillStyle='#fff'; ctx.font='bold 11px "SF Mono",monospace'; ctx.fillText(fmt(px), padL+cw+5, lastY+4);
+  ctx.strokeStyle='#111'; ctx.setLineDash([2,3]); ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(padL,lastY); ctx.lineTo(padL+cw,lastY); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#111';
+  ctx.fillRect(padL+cw, lastY-8, padR-3, 16);
+  ctx.fillStyle='#fff';
+  ctx.font='bold 11px "SF Mono",Consolas,monospace';
+  ctx.fillText(fmt(px), padL+cw+5, lastY+4);
+
+  if(mouse.inside && mouse.x>padL && mouse.x<padL+cw && mouse.y>padT && mouse.y<padT+ch){
+    ctx.strokeStyle='#bbb'; ctx.setLineDash([2,3]); ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(mouse.x,padT); ctx.lineTo(mouse.x,padT+ch); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(padL,mouse.y); ctx.lineTo(padL+cw,mouse.y); ctx.stroke();
+    ctx.setLineDash([]);
+    const pv = hi - (mouse.y-padT)/priceH*range;
+    if(pv>lo && pv<hi){
+      ctx.fillStyle='#111'; ctx.fillRect(padL+cw, mouse.y-8, padR-3, 16);
+      ctx.fillStyle='#fff'; ctx.font='11px "SF Mono",Consolas,monospace';
+      ctx.fillText(fmt(pv), padL+cw+5, mouse.y+3);
+    }
+  }
+
+  // Draw active main position entry line matching backend calculations
+  if (activeMainTrade) {
+    const entryY = padT + (hi - activeMainTrade.entry) / range * priceH;
+    if (entryY >= padT && entryY <= padT + priceH) {
+      const activeColor = activeMainTrade.type === 'BUY' ? '#00884a' : '#c62828';
+      const labelText = activeMainTrade.type === 'BUY' ? 'BUY ENTRY' : 'SELL ENTRY';
+
+      ctx.strokeStyle = activeColor;
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(padL, entryY);
+      ctx.lineTo(padL + cw, entryY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = activeColor;
+      ctx.font = 'bold 10px "SF Mono",Consolas,monospace';
+      ctx.fillText(labelText, padL + 10, entryY - 4);
+    }
+  }
+
+  ctx.strokeStyle='#e5e5e5'; ctx.lineWidth=1;
+  ctx.strokeRect(padL, padT, cw, ch);
+
+  ctx.font='10px -apple-system,Segoe UI,sans-serif';
+  ctx.fillStyle='#0066ff'; ctx.fillText('— VWAP', padL+10, padT+12);
+  ctx.fillStyle='#ff8a00'; ctx.fillText('-- EMA20', padL+58, padT+12);
+  ctx.fillStyle='#64b5f6'; ctx.fillText('± BB(20,2)', padL+112, padT+12);
+  ctx.fillStyle='#888'; ctx.fillText('VOL', padL+178, padT+12);
 }
 
+function updateHeader(px, candles){
+  // Preserve layout settings
+}
+
+/* ---------- SYNCED RENDER LOOP ---------- */
+setInterval(()=>{
+  const now = Date.now();
+  const px = livePrice();
+  
+  if (candleHistory.length > 0) {
+    const lastCandle = candleHistory[candleHistory.length - 1];
+    lastCandle.c = px;
+    if (px > lastCandle.h) lastCandle.h = px;
+    if (px < lastCandle.l) lastCandle.l = px;
+  }
+
+  const book = genBook(px);
+  const tape = genTape(px);
+  
+  renderBook(book);
+  renderTape(tape);
+  updateHeader(px, candleHistory);
+  drawChart(candleHistory, px);
+  renderLog();
+}, 140);
+
+// Initialize layouts and responsive bindings
 resize();
 
 // Dual Pop-up Logic (Settings & Access Denied)
@@ -756,36 +960,56 @@ window.addEventListener('click', function(e) {
   const accessModal = document.getElementById('access-modal');
   const settingsModal = document.getElementById('settings-modal');
 
+  // 1. Clicking OK closes the Access Denied popup
   if (e.target.id === 'modal-ok-btn') {
     accessModal.style.display = 'none';
     e.stopPropagation();
     return;
   }
+  
+  // 2. Clicking Filter Button opens Trade Settings
   if (e.target.closest('#filter-btn')) {
     settingsModal.style.display = 'flex';
     e.stopPropagation();
     return;
   }
-  if (e.target.closest('#settings-close') || e.target.id === 'settings-modal') {
+
+  // 3. Clicking "✕" closes Trade Settings
+  if (e.target.closest('#settings-close')) {
     settingsModal.style.display = 'none';
     e.stopPropagation();
     return;
   }
+
+  // 4. Clicking OUTSIDE the Trade Settings box (on the backdrop) closes it
+  if (e.target.id === 'settings-modal') {
+    settingsModal.style.display = 'none';
+    e.stopPropagation();
+    return;
+  }
+
+  // 5. Clicking Toggles inside Trade Settings triggers Access Denied
   if (e.target.closest('.fake-toggle')) {
     accessModal.style.display = 'flex';
     e.stopPropagation();
     return;
   }
+
+  // 6. Clicking inside the Trade Settings container behaves normally
   if (e.target.closest('.settings-box')) {
     return;
   }
+
+  // 7. If Access Denied popup is open, block ANY click outside the "OK" button from closing it
   if (accessModal.style.display === 'flex' || accessModal.style.display === '') {
     e.stopPropagation();
     return;
   }
+
+  // 8. Any other random screen click opens Access Denied popup
   accessModal.style.display = 'flex';
-}, true);
+}, true); // Intercept all clicks globally
 
 </script>
 </body>
-     </html>
+   </html>
