@@ -1,250 +1,155 @@
-// --- EXACT MATH STATE FROM YOUR EMULATOR ---
+const express = require('express');
+const http = require('http');
+const WebSocket = require('ws');
+const path = require('path');
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+// Serve static front-end files
+app.use(express.static(path.join(__dirname, 'public')));
+
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
+// Central State (Held in memory 24/7)
+let state = {
+  balance: 120192307.00, // Starting baseline ($120.19M USD / ~1000 Crore INR)
+  currentPrice: 124.0204,
+  activeTrades: [],
+  candleHistory: []
+};
+
+// Initialize candle history
 const EPOCH = 1704067200000;
 const CANDLE_MS = 2000;
 const VISIBLE_CANDLES = 48;
 
-function mulberry32(a) {
-  return function() {
-    a |= 0; a = a + 0x6D2B79F5 | 0;
-    let t = Math.imul(a ^ a >>> 15, 1 | a);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+function initCandles() {
+  let tempPrice = state.currentPrice;
+  for (let i = 0; i < VISIBLE_CANDLES; i++) {
+    const change = (Math.random() - 0.5) * 0.25;
+    const open = tempPrice;
+    const close = tempPrice + change;
+    state.candleHistory.push({
+      o: open,
+      h: Math.max(open, close) + Math.random() * 0.05,
+      l: Math.min(open, close) - Math.random() * 0.05,
+      c: close,
+      v: 0.5 + Math.random() * 3,
+      t: Date.now() - (VISIBLE_CANDLES - i) * CANDLE_MS
+    });
+    tempPrice = close;
   }
 }
-function seedFor(i) { return ((i * 2654435761) >>> 0) ^ 0x9E3779B9; }
+initCandles();
 
-function computeCandle(i, prevClose) {
-  const rng = mulberry32(seedFor(i));
-  const r1 = rng(), r2 = rng(), r3 = rng(), r4 = rng(), r5 = rng(), r6 = rng();
-  const u1 = Math.max(1e-9, r1);
-  const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * r2);
-  const jump = (r3 < 0.035) ? (r4 - 0.5) * 0.018 : 0;
-  const vol = 0.0014 + Math.abs(z) * 0.0003;
-  const ret = z * vol + (r5 - 0.5) * 0.00025 + jump;
-  const o = prevClose;
-  const c = Math.max(1, o * (1 + ret));
-  const wick1 = Math.abs(r4 - 0.5) * vol * o * 1.8;
-  const wick2 = Math.abs(r5 - 0.5) * vol * o * 1.8;
-  const h = Math.max(o, c) + wick1;
-  const l = Math.min(o, c) - wick2;
-  const v = 0.4 + r6 * 3.2;
-  return { i, o, h, l, c, v, t: EPOCH + i * CANDLE_MS };
-}
-
-// Initialize state parameters inside the active virtual room
-function initRoomState(room) {
-  if (room.initialized) return;
-  
-  room.candleHistory = [];
-  room.currentPrice = 124.0204;
-  room.lastCandleTime = Math.floor(Date.now() / CANDLE_MS) * CANDLE_MS;
-  room.globalBalance = 120192307.45;
-  room.activePosition = null;
-  room.cooldownUntil = 0;
-  room.bgTrades = [];
-  
-  const count = VISIBLE_CANDLES;
-  const nowIdx = Math.floor((Date.now() - EPOCH) / CANDLE_MS);
-  const startIdx = nowIdx - count;
-  let p = 124.0204;
-  for (let i = startIdx; i < nowIdx; i++) {
-    const c = computeCandle(i, p);
-    room.candleHistory.push(c);
-    p = c.c;
-  }
-  room.currentPrice = p;
-  room.initialized = true;
-}
-
-function updateLivePrice(room) {
+// Central High-Frequency Trading Simulation Loop (Every 150ms)
+setInterval(() => {
   const now = Date.now();
-  if (room.activePosition) {
-    const elapsed = now - room.activePosition.start;
-    const pct = Math.min(1, elapsed / room.activePosition.duration);
-    const progression = (pct * 1.05) - Math.sin(pct * Math.PI * 2.5) * 0.15;
+
+  // 1. Walk base price
+  const priceChange = (Math.random() - 0.5) * 0.04;
+  state.currentPrice = Math.max(10, state.currentPrice + priceChange);
+
+  // 2. Update existing active arbitrage positions
+  state.activeTrades.forEach((t) => {
+    const elapsed = now - t.start;
+    const progress = Math.min(1, elapsed / t.duration);
     
-    let drift = progression * room.activePosition.driftTarget;
-    if (room.activePosition.isLoss) {
-      drift = -drift; 
+    // Wave calculations to simulate live price fluctuations
+    const ratio = (progress * 1.05) - Math.sin(progress * Math.PI * 2.5) * 0.15;
+    let profit = t.targetProfit * (t.type === 'BUY' ? ratio : -ratio);
+    if (t.isLoss) {
+      profit = Math.abs(t.targetProfit) * (t.type === 'BUY' ? -ratio : ratio);
     }
-    
-    const noise = (Math.random() - 0.5) * (room.activePosition.entry * 0.00004);
-    
-    if (room.activePosition.type === 'BUY') {
-      room.currentPrice = room.activePosition.entry + drift + noise;
-    } else {
-      room.currentPrice = room.activePosition.entry - drift - noise;
+    t.currentProfit = Math.round(profit / 0.15) * 0.15; // Jumps by steps
+  });
+
+  // 3. Process completed trades & add/subtract directly from central balance
+  const completed = state.activeTrades.filter(t => (now - t.start) >= t.duration);
+  completed.forEach(t => {
+    state.balance += t.currentProfit;
+  });
+
+  // Keep only non-expired trades in memory
+  state.activeTrades = state.activeTrades.filter(t => (now - t.start) < t.duration);
+
+  // 4. Spawn new trades if slots are open (keeps 3-6 trades active at all times)
+  const assets = ["Coin-39", "Coin-49", "Coin-5", "Coin-12", "Coin-74"];
+  if (state.activeTrades.length < 5) {
+    if (Math.random() < 0.3) {
+      const isLoss = Math.random() < 0.33; // ~33% chance of trade loss
+      const targetProfit = isLoss 
+        ? -parseFloat((Math.random() * 5.00 + 1.00).toFixed(2))
+        : parseFloat((Math.random() * 5.50 + 0.50).toFixed(2));
+
+      state.activeTrades.push({
+        id: "ARB-" + Math.floor(Math.random() * 9000 + 1000),
+        asset: assets[Math.floor(Math.random() * assets.length)],
+        entry: parseFloat((state.currentPrice + (Math.random() - 0.5) * 1.5).toFixed(4)),
+        type: Math.random() < 0.5 ? "BUY" : "SELL",
+        size: (Math.random() * 12 + 1).toFixed(1),
+        targetProfit: targetProfit,
+        currentProfit: 0,
+        isLoss: isLoss,
+        start: now,
+        duration: Math.floor(Math.random() * 8000) + 7000 // Lasts 7 to 15 seconds
+      });
+    }
+  }
+
+  // 5. Manage candles
+  const lastCandle = state.candleHistory[state.candleHistory.length - 1];
+  if (now - lastCandle.t >= CANDLE_MS) {
+    // Push new candle
+    state.candleHistory.push({
+      o: lastCandle.c,
+      h: lastCandle.c,
+      l: lastCandle.c,
+      c: lastCandle.c,
+      v: 0.5 + Math.random() * 3,
+      t: Math.floor(now / CANDLE_MS) * CANDLE_MS
+    });
+    if (state.candleHistory.length > VISIBLE_CANDLES) {
+      state.candleHistory.shift();
     }
   } else {
-    const change = (Math.random() - 0.5) * 0.014;
-    room.currentPrice += change;
+    // Update existing candle
+    lastCandle.c = state.currentPrice;
+    if (state.currentPrice > lastCandle.h) lastCandle.h = state.currentPrice;
+    if (state.currentPrice < lastCandle.l) lastCandle.l = state.currentPrice;
   }
-  return room.currentPrice;
-}
 
-function genBook(px) {
-  const t = Date.now() * 0.025;
-  const asks = [], bids = [];
-  const macroShift = Math.sin(t * 0.9) * px * 0.00008;
-  const spreadMultiplier = 0.00008 + Math.abs(Math.sin(t * 0.5)) * 0.00018;
-  
-  let aP = px + macroShift + px * spreadMultiplier;
-  let bP = px + macroShift - px * spreadMultiplier;
-  let aT = 0, bT = 0;
-  
-  for (let i = 0; i < 10; i++) {
-    const jitterAsk = Math.sin(t + i * 1.8) * 1.2 + Math.cos(t * 2.5 - i) * 0.6;
-    const jitterBid = Math.cos(t - i * 1.8) * 1.2 + Math.sin(t * 2.5 + i) * 0.6;
-    
-    const szAsk = Math.max(0.05, 2.5 + jitterAsk * 6.5 + (i * 0.3));
-    const szBid = Math.max(0.05, 2.5 + jitterBid * 6.5 + (i * 0.3));
-    
-    aT += szAsk;
-    asks.push({ p: aP + (i * px * 0.00007), s: szAsk, t: aT });
-    
-    bT += szBid;
-    bids.push({ p: bP - (i * px * 0.00007), s: szBid, t: bT });
-  }
-  return { asks, bids };
-}
+  // 6. Broadcast updated state to all connected visitors
+  const payload = JSON.stringify({
+    type: "TICK",
+    balance: state.balance,
+    currentPrice: state.currentPrice,
+    activeTrades: state.activeTrades,
+    candleHistory: state.candleHistory
+  });
 
-// PartyKit standard Room Interface definition
-export default {
-  onConnect(connection, room) {
-    initRoomState(room);
-
-    // Start running standard interval loop inside the room namespace
-    if (!room.intervalId) {
-      room.intervalId = setInterval(() => {
-        const now = Date.now();
-        const currentCandleTime = Math.floor(now / CANDLE_MS) * CANDLE_MS;
-
-        if (currentCandleTime > room.lastCandleTime) {
-          const prevClose = room.candleHistory.length > 0 ? room.candleHistory[room.candleHistory.length - 1].c : room.currentPrice;
-          const rng = mulberry32(seedFor(Math.floor(currentCandleTime / CANDLE_MS)) ^ 0x9999);
-          const v = 0.4 + rng() * 3.2;
-          
-          room.candleHistory.push({
-            o: prevClose,
-            h: prevClose,
-            l: prevClose,
-            c: prevClose,
-            v: v,
-            t: currentCandleTime
-          });
-          if (room.candleHistory.length > VISIBLE_CANDLES) {
-            room.candleHistory.shift();
-          }
-          room.lastCandleTime = currentCandleTime;
-        }
-
-        const px = updateLivePrice(room);
-
-        if (room.candleHistory.length > 0) {
-          const lastCandle = room.candleHistory[room.candleHistory.length - 1];
-          lastCandle.c = px;
-          if (px > lastCandle.h) lastCandle.h = px;
-          if (px < lastCandle.l) lastCandle.l = px;
-        }
-
-        let balanceJump = 0;
-
-        if (room.activePosition) {
-          const elapsed = now - room.activePosition.start;
-          if (elapsed >= room.activePosition.duration) {
-            balanceJump += room.activePosition.profitTarget;
-            room.activePosition = null;
-            const silentIntervals = [5000, 10000, 15000, 20000];
-            room.cooldownUntil = now + silentIntervals[Math.floor(Math.random() * silentIntervals.length)];
-          }
-        } else {
-          if (now > room.cooldownUntil) {
-            const tradeType = Math.random() < 0.5 ? 'BUY' : 'SELL';
-            const tradeDuration = Math.random() * 800 + 1200;
-            const driftTarget = room.currentPrice * (Math.random() * 0.00015 + 0.00006);
-            const isLoss = Math.random() < 0.35;
-            const profitTarget = isLoss 
-              ? -parseFloat((Math.random() * 6.00 + 1.00).toFixed(2)) 
-              : parseFloat((Math.random() * 7.00 + 0.50).toFixed(2));
-
-            room.activePosition = {
-              entry: room.currentPrice,
-              type: tradeType,
-              driftTarget: driftTarget,
-              size: (Math.random() * 2.8 + 0.4).toFixed(4),
-              profitTarget: profitTarget,
-              duration: tradeDuration,
-              start: now,
-              isLoss: isLoss
-            };
-          }
-        }
-
-        const activeBg = [];
-        room.bgTrades.forEach(t => {
-          const elapsed = now - t.start;
-          if (elapsed >= t.duration) {
-            balanceJump += t.targetProfit;
-          } else {
-            activeBg.push(t);
-          }
-        });
-        room.bgTrades = activeBg;
-
-        if (room.bgTrades.length < 15) {
-          let spawnChance = 0.12;
-          if (room.bgTrades.length < 2) spawnChance = 0.45;
-          else if (room.bgTrades.length > 6) spawnChance = 0.04;
-
-          if (Math.random() < spawnChance) {
-            const coins = ['Coin-39', 'Coin-49', 'Coin-5', 'Coin-12', 'Coin-74', 'Asset-8', 'Asset-22', 'Asset-16'];
-            const assetSelected = coins[Math.floor(Math.random() * coins.length)];
-            const duration = Math.random() * 900 + 1100;
-            const basePrice = Math.random() * 60 + 15;
-            const isLoss = Math.random() < 0.35;
-            const targetProfit = isLoss 
-              ? -parseFloat((Math.random() * 5.00 + 1.00).toFixed(2)) 
-              : parseFloat((Math.random() * 5.50 + 0.50).toFixed(2));
-
-            room.bgTrades.push({
-              id: 'ARB-' + Math.floor(Math.random() * 9000 + 1000),
-              asset: assetSelected,
-              entry: basePrice,
-              type: Math.random() < 0.5 ? 'BUY' : 'SELL',
-              duration: duration,
-              start: now,
-              size: (Math.random() * 12 + 1).toFixed(1),
-              targetProfit: targetProfit,
-              isLoss: isLoss
-            });
-          }
-        }
-
-        if (balanceJump !== 0) {
-          room.globalBalance += balanceJump;
-        }
-
-        const book = genBook(px);
-
-        // Broadcast standardized JSON update via PartyKit
-        room.broadcast(JSON.stringify({
-          price: px,
-          balance: room.globalBalance,
-          candles: room.candleHistory,
-          activePosition: room.activePosition,
-          bgTrades: room.bgTrades,
-          book: book
-        }));
-
-      }, 250);
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(payload);
     }
-  },
+  });
 
-  onClose(connection, room) {
-    if (room.connections.size === 0 && room.intervalId) {
-      clearInterval(room.intervalId);
-      room.intervalId = null;
-      room.initialized = false;
-    }
-  }
-};
+}, 150);
+
+// WebSocket client connection handling
+wss.on('connection', (ws) => {
+  // Send current state immediately on connection
+  ws.send(JSON.stringify({
+    type: "INIT",
+    balance: state.balance,
+    currentPrice: state.currentPrice,
+    activeTrades: state.activeTrades,
+    candleHistory: state.candleHistory
+  }));
+});
+
+server.listen(port, () => {
+  console.log(`Continuous Arbitrage Server listening on port ${port}`);
+});
