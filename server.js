@@ -1,32 +1,7 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
-
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
-
-app.use(express.static(path.join(__dirname)));
-
-// Route to serve the main HTML page
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'arbitrage_system.html'));
-});
-
-// --- EXACT MATH STATE FROM YOUR FILE ---
+// --- EXACT MATH STATE FROM YOUR EMULATOR ---
 const EPOCH = 1704067200000;
 const CANDLE_MS = 2000;
 const VISIBLE_CANDLES = 48;
-
-let candleHistory = [];
-let currentPrice = 124.0204;
-let lastCandleTime = 0;
-let globalBalance = 120192307.45; // Starting balance (~1000 Crore INR)
-
-let activePosition = null;
-let cooldownUntil = 0;
-let bgTrades = [];
 
 function mulberry32(a) {
   return function() {
@@ -56,48 +31,57 @@ function computeCandle(i, prevClose) {
   return { i, o, h, l, c, v, t: EPOCH + i * CANDLE_MS };
 }
 
-function initCandles() {
+// Initialize state parameters inside the active virtual room
+function initRoomState(room) {
+  if (room.initialized) return;
+  
+  room.candleHistory = [];
+  room.currentPrice = 124.0204;
+  room.lastCandleTime = Math.floor(Date.now() / CANDLE_MS) * CANDLE_MS;
+  room.globalBalance = 120192307.45;
+  room.activePosition = null;
+  room.cooldownUntil = 0;
+  room.bgTrades = [];
+  
   const count = VISIBLE_CANDLES;
   const nowIdx = Math.floor((Date.now() - EPOCH) / CANDLE_MS);
   const startIdx = nowIdx - count;
   let p = 124.0204;
   for (let i = startIdx; i < nowIdx; i++) {
     const c = computeCandle(i, p);
-    candleHistory.push(c);
+    room.candleHistory.push(c);
     p = c.c;
   }
-  currentPrice = p;
-  lastCandleTime = Math.floor(Date.now() / CANDLE_MS) * CANDLE_MS;
+  room.currentPrice = p;
+  room.initialized = true;
 }
 
-// Update live price with smooth, realistic drift
-function updateLivePrice() {
+function updateLivePrice(room) {
   const now = Date.now();
-  if (activePosition) {
-    const elapsed = now - activePosition.start;
-    const pct = Math.min(1, elapsed / activePosition.duration);
+  if (room.activePosition) {
+    const elapsed = now - room.activePosition.start;
+    const pct = Math.min(1, elapsed / room.activePosition.duration);
     const progression = (pct * 1.05) - Math.sin(pct * Math.PI * 2.5) * 0.15;
     
-    let drift = progression * activePosition.driftTarget;
-    if (activePosition.isLoss) {
+    let drift = progression * room.activePosition.driftTarget;
+    if (room.activePosition.isLoss) {
       drift = -drift; 
     }
     
-    const noise = (Math.random() - 0.5) * (activePosition.entry * 0.00004);
+    const noise = (Math.random() - 0.5) * (room.activePosition.entry * 0.00004);
     
-    if (activePosition.type === 'BUY') {
-      currentPrice = activePosition.entry + drift + noise;
+    if (room.activePosition.type === 'BUY') {
+      room.currentPrice = room.activePosition.entry + drift + noise;
     } else {
-      currentPrice = activePosition.entry - drift - noise;
+      room.currentPrice = room.activePosition.entry - drift - noise;
     }
   } else {
     const change = (Math.random() - 0.5) * 0.014;
-    currentPrice += change;
+    room.currentPrice += change;
   }
-  return currentPrice;
+  return room.currentPrice;
 }
 
-// Generate the L3 Depth Book
 function genBook(px) {
   const t = Date.now() * 0.025;
   const asks = [], bids = [];
@@ -124,136 +108,143 @@ function genBook(px) {
   return { asks, bids };
 }
 
-initCandles();
+// PartyKit standard Room Interface definition
+export default {
+  onConnect(connection, room) {
+    initRoomState(room);
 
-// --- CENTRAL EMULATOR INTERVAL ---
-setInterval(() => {
-  const now = Date.now();
-  const currentCandleTime = Math.floor(now / CANDLE_MS) * CANDLE_MS;
+    // Start running standard interval loop inside the room namespace
+    if (!room.intervalId) {
+      room.intervalId = setInterval(() => {
+        const now = Date.now();
+        const currentCandleTime = Math.floor(now / CANDLE_MS) * CANDLE_MS;
 
-  // Manage candles structure
-  if (currentCandleTime > lastCandleTime) {
-    const prevClose = candleHistory.length > 0 ? candleHistory[candleHistory.length - 1].c : currentPrice;
-    const rng = mulberry32(seedFor(Math.floor(currentCandleTime / CANDLE_MS)) ^ 0x9999);
-    const v = 0.4 + rng() * 3.2;
-    
-    candleHistory.push({
-      o: prevClose,
-      h: prevClose,
-      l: prevClose,
-      c: prevClose,
-      v: v,
-      t: currentCandleTime
-    });
-    if (candleHistory.length > VISIBLE_CANDLES) {
-      candleHistory.shift();
+        if (currentCandleTime > room.lastCandleTime) {
+          const prevClose = room.candleHistory.length > 0 ? room.candleHistory[room.candleHistory.length - 1].c : room.currentPrice;
+          const rng = mulberry32(seedFor(Math.floor(currentCandleTime / CANDLE_MS)) ^ 0x9999);
+          const v = 0.4 + rng() * 3.2;
+          
+          room.candleHistory.push({
+            o: prevClose,
+            h: prevClose,
+            l: prevClose,
+            c: prevClose,
+            v: v,
+            t: currentCandleTime
+          });
+          if (room.candleHistory.length > VISIBLE_CANDLES) {
+            room.candleHistory.shift();
+          }
+          room.lastCandleTime = currentCandleTime;
+        }
+
+        const px = updateLivePrice(room);
+
+        if (room.candleHistory.length > 0) {
+          const lastCandle = room.candleHistory[room.candleHistory.length - 1];
+          lastCandle.c = px;
+          if (px > lastCandle.h) lastCandle.h = px;
+          if (px < lastCandle.l) lastCandle.l = px;
+        }
+
+        let balanceJump = 0;
+
+        if (room.activePosition) {
+          const elapsed = now - room.activePosition.start;
+          if (elapsed >= room.activePosition.duration) {
+            balanceJump += room.activePosition.profitTarget;
+            room.activePosition = null;
+            const silentIntervals = [5000, 10000, 15000, 20000];
+            room.cooldownUntil = now + silentIntervals[Math.floor(Math.random() * silentIntervals.length)];
+          }
+        } else {
+          if (now > room.cooldownUntil) {
+            const tradeType = Math.random() < 0.5 ? 'BUY' : 'SELL';
+            const tradeDuration = Math.random() * 800 + 1200;
+            const driftTarget = room.currentPrice * (Math.random() * 0.00015 + 0.00006);
+            const isLoss = Math.random() < 0.35;
+            const profitTarget = isLoss 
+              ? -parseFloat((Math.random() * 6.00 + 1.00).toFixed(2)) 
+              : parseFloat((Math.random() * 7.00 + 0.50).toFixed(2));
+
+            room.activePosition = {
+              entry: room.currentPrice,
+              type: tradeType,
+              driftTarget: driftTarget,
+              size: (Math.random() * 2.8 + 0.4).toFixed(4),
+              profitTarget: profitTarget,
+              duration: tradeDuration,
+              start: now,
+              isLoss: isLoss
+            };
+          }
+        }
+
+        const activeBg = [];
+        room.bgTrades.forEach(t => {
+          const elapsed = now - t.start;
+          if (elapsed >= t.duration) {
+            balanceJump += t.targetProfit;
+          } else {
+            activeBg.push(t);
+          }
+        });
+        room.bgTrades = activeBg;
+
+        if (room.bgTrades.length < 15) {
+          let spawnChance = 0.12;
+          if (room.bgTrades.length < 2) spawnChance = 0.45;
+          else if (room.bgTrades.length > 6) spawnChance = 0.04;
+
+          if (Math.random() < spawnChance) {
+            const coins = ['Coin-39', 'Coin-49', 'Coin-5', 'Coin-12', 'Coin-74', 'Asset-8', 'Asset-22', 'Asset-16'];
+            const assetSelected = coins[Math.floor(Math.random() * coins.length)];
+            const duration = Math.random() * 900 + 1100;
+            const basePrice = Math.random() * 60 + 15;
+            const isLoss = Math.random() < 0.35;
+            const targetProfit = isLoss 
+              ? -parseFloat((Math.random() * 5.00 + 1.00).toFixed(2)) 
+              : parseFloat((Math.random() * 5.50 + 0.50).toFixed(2));
+
+            room.bgTrades.push({
+              id: 'ARB-' + Math.floor(Math.random() * 9000 + 1000),
+              asset: assetSelected,
+              entry: basePrice,
+              type: Math.random() < 0.5 ? 'BUY' : 'SELL',
+              duration: duration,
+              start: now,
+              size: (Math.random() * 12 + 1).toFixed(1),
+              targetProfit: targetProfit,
+              isLoss: isLoss
+            });
+          }
+        }
+
+        if (balanceJump !== 0) {
+          room.globalBalance += balanceJump;
+        }
+
+        const book = genBook(px);
+
+        // Broadcast standardized JSON update via PartyKit
+        room.broadcast(JSON.stringify({
+          price: px,
+          balance: room.globalBalance,
+          candles: room.candleHistory,
+          activePosition: room.activePosition,
+          bgTrades: room.bgTrades,
+          book: book
+        }));
+
+      }, 250);
     }
-    lastCandleTime = currentCandleTime;
-  }
+  },
 
-  const px = updateLivePrice();
-
-  if (candleHistory.length > 0) {
-    const lastCandle = candleHistory[candleHistory.length - 1];
-    lastCandle.c = px;
-    if (px > lastCandle.h) lastCandle.h = px;
-    if (px < lastCandle.l) lastCandle.l = px;
-  }
-
-  // Handle active trades (Accumulate balance on completion)
-  let balanceJump = 0;
-
-  if (activePosition) {
-    const elapsed = now - activePosition.start;
-    if (elapsed >= activePosition.duration) {
-      balanceJump += activePosition.profitTarget;
-      activePosition = null;
-      const silentIntervals = [5000, 10000, 15000, 20000];
-      cooldownUntil = now + silentIntervals[Math.floor(Math.random() * silentIntervals.length)];
-    }
-  } else {
-    if (now > cooldownUntil) {
-      const tradeType = Math.random() < 0.5 ? 'BUY' : 'SELL';
-      const tradeDuration = Math.random() * 800 + 1200;
-      const driftTarget = currentPrice * (Math.random() * 0.00015 + 0.00006);
-      const isLoss = Math.random() < 0.35;
-      const profitTarget = isLoss 
-        ? -parseFloat((Math.random() * 6.00 + 1.00).toFixed(2)) 
-        : parseFloat((Math.random() * 7.00 + 0.50).toFixed(2));
-
-      activePosition = {
-        entry: currentPrice,
-        type: tradeType,
-        driftTarget: driftTarget,
-        size: (Math.random() * 2.8 + 0.4).toFixed(4),
-        profitTarget: profitTarget,
-        duration: tradeDuration,
-        start: now,
-        isLoss: isLoss
-      };
+  onClose(connection, room) {
+    if (room.connections.size === 0 && room.intervalId) {
+      clearInterval(room.intervalId);
+      room.intervalId = null;
+      room.initialized = false;
     }
   }
-
-  // Handle background trades simulation
-  const activeBg = [];
-  bgTrades.forEach(t => {
-    const elapsed = now - t.start;
-    if (elapsed >= t.duration) {
-      balanceJump += t.targetProfit;
-    } else {
-      activeBg.push(t);
-    }
-  });
-  bgTrades = activeBg;
-
-  if (bgTrades.length < 15) {
-    let spawnChance = 0.12;
-    if (bgTrades.length < 2) spawnChance = 0.45;
-    else if (bgTrades.length > 6) spawnChance = 0.04;
-
-    if (Math.random() < spawnChance) {
-      const coins = ['Coin-39', 'Coin-49', 'Coin-5', 'Coin-12', 'Coin-74', 'Asset-8', 'Asset-22', 'Asset-16'];
-      const assetSelected = coins[Math.floor(Math.random() * coins.length)];
-      const duration = Math.random() * 900 + 1100;
-      const basePrice = Math.random() * 60 + 15;
-      const isLoss = Math.random() < 0.35;
-      const targetProfit = isLoss 
-        ? -parseFloat((Math.random() * 5.00 + 1.00).toFixed(2)) 
-        : parseFloat((Math.random() * 5.50 + 0.50).toFixed(2));
-
-      bgTrades.push({
-        id: 'ARB-' + Math.floor(Math.random() * 9000 + 1000),
-        asset: assetSelected,
-        entry: basePrice,
-        type: Math.random() < 0.5 ? 'BUY' : 'SELL',
-        duration: duration,
-        start: now,
-        size: (Math.random() * 12 + 1).toFixed(1),
-        targetProfit: targetProfit,
-        isLoss: isLoss
-      });
-    }
-  }
-
-  if (balanceJump !== 0) {
-    globalBalance += balanceJump;
-  }
-
-  const book = genBook(px);
-
-  // Broadcast updates to all listening client browsers
-  io.emit('market_update', {
-    price: px,
-    balance: globalBalance,
-    candles: candleHistory,
-    activePosition: activePosition,
-    bgTrades: bgTrades,
-    book: book
-  });
-
-}, 250);
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+};
