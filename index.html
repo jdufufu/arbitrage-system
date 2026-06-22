@@ -520,15 +520,17 @@
 
 </div>
 
-<!-- Include Socket.io Library -->
-<script src="/socket.io/socket.io.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const fmt = (n,d=2)=> n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
 const fmtK = n => n>=1e9?(n/1e9).toFixed(2)+'B':n>=1e6?(n/1e6).toFixed(2)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':n.toFixed(0);
 
-// Initialize Socket.io Connection
-const socket = io();
+// Initialize PartyKit standard WebSocket connection
+const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+const host = window.location.host;
+const socketUrl = `${protocol}//${host}/parties/main/default`;
+
+const socket = new WebSocket(socketUrl);
 
 // Constants
 const LEVEL_COUNT = 10;
@@ -863,23 +865,32 @@ function drawChart(candles, px, activePosition){
 // Initialize layout canvas structure
 resize();
 
-// --- SOCKET LISTENER (RECEIVE SERVER STREAM) ---
-socket.on('market_update', (data) => {
-  const px = data.price;
-  const balance = data.balance;
-  const candles = data.candles;
-  const activePosition = data.activePosition;
-  const bgTrades = data.bgTrades;
-  const book = data.book;
+// --- RECEIVE BROADCAST FROM PARTYKIT ---
+socket.onmessage = (event) => {
+  try {
+    const data = JSON.parse(event.data);
+    
+    // Ignore debugging/system greetings if sent
+    if (data.type === "system") return;
 
-  // Render received updates on screen
-  $('balance-val').textContent = '$' + balance.toFixed(2);
-  
-  renderBook(book);
-  renderTape(genTape(px));
-  renderPositions(activePosition, bgTrades, px);
-  drawChart(candles, px, activePosition);
-});
+    const px = data.price;
+    const balance = data.balance;
+    const candles = data.candles;
+    const activePosition = data.activePosition;
+    const bgTrades = data.bgTrades;
+    const book = data.book;
+
+    // Render parameters live
+    $('balance-val').textContent = '$' + balance.toFixed(2);
+    
+    renderBook(book);
+    renderTape(genTape(px));
+    renderPositions(activePosition, bgTrades, px);
+    drawChart(candles, px, activePosition);
+  } catch (err) {
+    console.error("Error parsing message payload:", err);
+  }
+};
 
 // ---- Modal Handlers ----
 window.addEventListener('click', function(e) {
