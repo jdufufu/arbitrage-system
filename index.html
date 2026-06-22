@@ -4,11 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Arbitrage System Advance-Orderbook</title>
-<!-- Connect to Cloudflare PartySocket library -->
-<script src="https://unpkg.com/partysocket"></script>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
-  
+
   html,body{
     height: 100vh;
     height: 100dvh;
@@ -32,6 +30,38 @@
     overflow: hidden;
   }
 
+  .hdr{
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    border-bottom: 1px solid #e5e5e5;
+    background: #fafafa;
+    gap: 12px;
+    height: 48px;
+    min-height: 48px;
+  }
+  .logo{font-weight: 700;font-size: 15px;letter-spacing: .5px;white-space: nowrap;}
+  .logo span{color: #0066ff;}
+  .sym{font-weight: 600;font-size: 13px;padding: 3px 8px;background: #fff;border: 1px solid #e5e5e5;border-radius: 3px;white-space: nowrap;}
+  .px{font-size: 20px;font-weight: 600;font-variant-numeric: tabular-nums;font-family: "SF Mono",Consolas,Menlo,monospace;color: #111;}
+  .chg{font-size: 12px;font-variant-numeric: tabular-nums;font-family: "SF Mono",Consolas,Menlo,monospace;}
+  .up{color: #00884a;} .dn{color: #c62828;}
+  .stats{display: flex;gap: 12px;margin-left: auto;font-size: 11px;color: #555;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;}
+  .stats b{color: #111;font-weight: 600;font-variant-numeric: tabular-nums;font-family: "SF Mono",Consolas,Menlo,monospace;}
+  .status{display: flex;align-items: center;gap: 6px;font-size: 12px;color: #555;white-space: nowrap;}
+
+  .dot{
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #00884a;
+    box-shadow: 0 0 6px #00884a;
+    animation: pulse 1.2s infinite;
+    flex-shrink: 0;
+    aspect-ratio: 1/1;
+  }
+  @keyframes pulse{0%,100%{opacity: 1;}50%{opacity: .4;}}
+
   .main{
     display: flex;
     flex: 1;
@@ -46,7 +76,7 @@
     min-height: 0;
     border-right: 1px solid #e5e5e5;
   }
-  
+
   .chart-wrap{
     position: relative;
     background: #fff;
@@ -73,7 +103,7 @@
   .log-head .title b{color: #111;font-family: "SF Mono",Consolas,Menlo,monospace;font-weight: 500;}
   .log-head .ops{color: #00884a;}
   .log-head .fills{color: #f57c00;}
-  
+
   .log-body{
     flex: 1;
     overflow: hidden;
@@ -82,6 +112,32 @@
     background: #fff;
     min-height: 0;
   }
+  .log-row{
+    display: flex;
+    align-items: center;
+    flex: 1;
+    padding: 0 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-bottom: 1px solid #fafafa;
+    font-family: "SF Mono",Consolas,Menlo,monospace;
+    font-size: 11.5px;
+  }
+  .log-row .ts{color: #888;margin-right:8px;font-size: 10.5px;}
+  .log-row .tag{display: inline-block;padding: 1px 5px;border-radius: 2px;margin-right: 8px;font-size: 9.5px;font-weight: 700;letter-spacing: .5px;color: #fff;}
+  .log-row .tag.scan{background: #1976d2;}
+  .log-row .tag.opp{background: #d32f2f;}
+  .log-row .tag.exec{background: #f57c00;}
+  .log-row .tag.fill{background: #388e3c;}
+  .log-row .tag.arb{background: #7b1fa2;}
+  .log-row .tag.hedge{background: #0097a7;}
+  .log-row .tag.risk{background: #c2185b;}
+  .log-row .tag.sync{background: #689f38;}
+  .log-row .msg{color: #333;}
+  .log-row .hi{color: #d32f2f;font-weight: 600;}
+  .log-row .ok{color: #388e3c;font-weight: 600;}
+  .log-row .val{color: #1976d2;}
 
   .balance-container {
     padding: 12px 15px;
@@ -345,6 +401,7 @@
 </head>
 <body>
 
+<!-- Trade Settings Modal -->
 <div id="settings-modal" class="settings-modal">
   <div class="settings-box">
     <div class="settings-header">
@@ -370,6 +427,7 @@
   </div>
 </div>
 
+<!-- Access Modal -->
 <div id="access-modal" class="modal-overlay">
   <div class="modal-box">
     <div class="modal-icon">
@@ -383,6 +441,8 @@
 </div>
 
 <div class="app">
+
+  <!-- Main Split -->
   <div class="main">
     <div class="left">
       <div class="chart-wrap">
@@ -435,6 +495,7 @@
     </div>
   </div>
 
+  <!-- Trade Tape -->
   <div class="tape">
     <div class="tape-head">
       <span>TIME (ET)</span><span>PRICE</span><span>SIZE</span><span>VENUE / ORDER ID</span><span>NOTIONAL</span>
@@ -442,6 +503,7 @@
     <div class="tape-body" id="tape"></div>
   </div>
 
+  <!-- Telemetry Footer -->
   <div class="tel">
     <span><span class="k">CORE</span><span class="v">#02 PINNED</span></span><span class="sep">│</span>
     <span><span class="k">NIC</span><span class="v">ExaNIC X25 FPGA</span></span><span class="sep">│</span>
@@ -455,36 +517,23 @@
     <span><span class="k">CPU</span><span class="v" id="t-cpu">4.12%</span></span><span class="sep">│</span>
     <span><span class="k">NY4↔CHI</span><span class="v" id="t-ping">12.14 ms</span></span>
   </div>
+
 </div>
 
+<!-- Include Socket.io Library -->
+<script src="/socket.io/socket.io.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const fmt = (n,d=2)=> n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
 const fmtK = n => n>=1e9?(n/1e9).toFixed(2)+'B':n>=1e6?(n/1e6).toFixed(2)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':n.toFixed(0);
 
+// Initialize Socket.io Connection
+const socket = io();
+
+// Constants
+const LEVEL_COUNT = 10;
+const TAPE_MAX = 5;
 const venues = ['NYSE-ARCA','NSDQ-NMS','BATS-Z','IEX-TP','MEMX-EQ','CBOE-EDGX'];
-
-// Connect to Cloudflare PartyKit Server Room
-const socket = new PartySocket({
-  host: window.location.host, 
-  room: "arbitrage"
-});
-
-let currentPrice = 124.0204;
-let candleHistory = [];
-let activePosition = null;
-
-let W=0,H=0,DPR=window.devicePixelRatio||1;
-let mouse = {x:-1,y:-1,inside:false};
-
-function timeET(ms){
-  const d = new Date(ms || Date.now());
-  return d.toLocaleString('en-US',{
-    timeZone:'America/New_York',
-    hour:'2-digit',minute:'2-digit',second:'2-digit',
-    hour12:false
-  }) + '.' + String(d.getMilliseconds()).padStart(3,'0');
-}
 
 function mulberry32(a){
   return function(){
@@ -496,39 +545,47 @@ function mulberry32(a){
 }
 function seedFor(i){ return ((i * 2654435761) >>> 0) ^ 0x9E3779B9; }
 
+function timeET(ms){
+  const d = new Date(ms || Date.now());
+  return d.toLocaleString('en-US',{
+    timeZone:'America/New_York',
+    hour:'2-digit',minute:'2-digit',second:'2-digit',
+    hour12:false
+  }) + '.' + String(d.getMilliseconds()).padStart(3,'0');
+}
+
+// Render Orderbook
 function renderBook(book){
+  if (!book || !book.asks || !book.bids) return;
   const maxT = Math.max(book.asks[book.asks.length-1].t, book.bids[book.bids.length-1].t, 1);
   const asksRev = [...book.asks].reverse();
-  
   $('asks').innerHTML = asksRev.map(a=>{
     const w = (a.t/maxT*100).toFixed(1);
     return `<div class="ob-row"><span>${fmt(a.p)}</span><span>${a.s.toFixed(3)}</span><span>${a.t.toFixed(3)}</span><div class="bar" style="width:${w}%"></div></div>`;
   }).join('');
-  
   $('bids').innerHTML = book.bids.map(b=>{
     const w = (b.t/maxT*100).toFixed(1);
     return `<div class="ob-row"><span>${fmt(b.p)}</span><span>${b.s.toFixed(3)}</span><span>${b.t.toFixed(3)}</span><div class="bar" style="width:${w}%"></div></div>`;
   }).join('');
-  
   const sp = book.asks[0].p - book.bids[0].p;
   $('spr').textContent = fmt(sp)+' ('+(sp/book.bids[0].p*10000).toFixed(2)+' bps)';
-  
   const secRng = mulberry32(seedFor(Math.floor(Date.now()/1000)) ^ 0xBB);
   $('ob-rate').textContent = Math.floor(130 + secRng()*15) + ' msg/s';
 }
 
-function genTape(px, timestampMs){
-  const bucket = Math.floor(timestampMs/65);
+// Generate matching mock tape based on current price
+function genTape(px){
+  const bucket = Math.floor(Date.now()/65);
   const rng = mulberry32(seedFor(bucket) ^ 0xFACE);
   const out = [];
-  for(let k=0; k<5; k++){
+  for(let k=0; k<TAPE_MAX; k++){
     const r1=rng(),r2=rng(),r3=rng(),r4=rng(),r5=rng();
     const side = r1<0.5?'buy':'sell';
     const p = px + (r2-0.5)*px*0.0002;
     const sz = r3<0.85 ? r4*2+0.01 : r4*25+2;
     const venue = venues[Math.floor(r5*venues.length)];
     const oid = Math.floor(rng()*0xFFFFFFFF).toString(16).toUpperCase().padStart(8,'0');
-    const tMs = timestampMs - k*140;
+    const tMs = Date.now() - k*140;
     out.push({t:timeET(tMs), p, s:sz, side, v:venue, id:oid, n:p*sz});
   }
   return out;
@@ -541,32 +598,26 @@ function renderTape(tape){
   }).join('');
 }
 
-function renderLog(data) {
-  const now = Date.now();
-  
-  $('balance-val').textContent = '$' + data.balance.toFixed(2);
-
+// Render active positions & background operations
+function renderPositions(activePosition, bgTrades, currentPrice) {
   const posBody = $('position-body');
   let cardsHtml = '';
 
-  if (data.activePosition) {
-    const elapsed = now - data.activePosition.start;
-    const pct = Math.min(1, elapsed / data.activePosition.duration);
+  if (activePosition) {
+    const elapsed = Date.now() - activePosition.start;
+    const pct = Math.min(1, elapsed / activePosition.duration);
     const ratio = (pct * 1.05) - Math.sin(pct * Math.PI * 2.5) * 0.15;
-    
-    let rawProfit = data.activePosition.profitTarget * (data.activePosition.type === 'BUY' ? ratio : -ratio);
-    if (data.activePosition.isLoss) {
-      rawProfit = Math.abs(data.activePosition.profitTarget) * (data.activePosition.type === 'BUY' ? -ratio : ratio);
+    let rawProfit = activePosition.profitTarget * (activePosition.type === 'BUY' ? ratio : -ratio);
+    if (activePosition.isLoss) {
+      rawProfit = Math.abs(activePosition.profitTarget) * (activePosition.type === 'BUY' ? -ratio : ratio);
     }
-
     const steppedProfit = Math.round(rawProfit / 0.85) * 0.85;
     const isProfit = steppedProfit >= 0;
     const pnlColorClass = isProfit ? 'up' : 'dn';
     const pnlSign = isProfit ? '+' : '-';
-    const formattedPnl = `${pnlSign}$${Math.abs(steppedProfit).toFixed(2)}`;
-    
-    const labelColorClass = data.activePosition.type === 'BUY' ? 'up' : 'dn';
-    const statusText = data.activePosition.type === 'BUY' ? 'BUY Coin-1' : 'SELL Coin-1';
+    const formattedPnl = `${pnlSign}$${fmt(Math.abs(steppedProfit))}`;
+    const labelColorClass = activePosition.type === 'BUY' ? 'up' : 'dn';
+    const statusText = activePosition.type === 'BUY' ? 'BUY Coin-1' : 'SELL Coin-1';
 
     cardsHtml += `
       <div class="position-card" style="margin-bottom: 6px; width: 100%; flex-shrink: 0;">
@@ -575,30 +626,27 @@ function renderLog(data) {
           <span class="pos-val ${labelColorClass}" style="font-weight:bold;">${statusText}</span>
         </div>
         <div class="pos-row" style="font-size: 10.5px; opacity: 0.85;">
-          <span class="pos-lbl">ENTRY: $${fmt(data.activePosition.entry)}</span>
+          <span class="pos-lbl">ENTRY: $${fmt(activePosition.entry)}</span>
           <span class="pos-val ${pnlColorClass}">${formattedPnl}</span>
         </div>
       </div>
     `;
   }
 
-  data.bgTrades.forEach(t => {
-    const elapsed = now - t.start;
-    if (elapsed < t.duration) {
+  if (bgTrades && bgTrades.length > 0) {
+    bgTrades.forEach(t => {
+      const elapsed = Date.now() - t.start;
       const pct = Math.min(1, elapsed / t.duration);
       const ratio = (pct * 1.05) - Math.sin(pct * Math.PI * 2.5) * 0.15;
-      
       let rawProfit = t.targetProfit * (t.type === 'BUY' ? ratio : -ratio);
       if (t.isLoss) {
         rawProfit = Math.abs(t.targetProfit) * (t.type === 'BUY' ? -ratio : ratio);
       }
-
       const steppedProfit = Math.round(rawProfit / 1.15) * 1.15;
       const isProfit = steppedProfit >= 0;
       const pnlColorClass = isProfit ? 'up' : 'dn';
       const pnlSign = isProfit ? '+' : '-';
-      const formattedPnl = `${pnlSign}$${Math.abs(steppedProfit).toFixed(2)}`;
-      
+      const formattedPnl = `${pnlSign}$${fmt(Math.abs(steppedProfit))}`;
       const labelColorClass = t.type === 'BUY' ? 'up' : 'dn';
       const statusText = t.type === 'BUY' ? `BUY ${t.asset}` : `SELL ${t.asset}`;
 
@@ -614,20 +662,24 @@ function renderLog(data) {
           </div>
         </div>
       `;
-    }
-  });
+    });
+  }
 
   posBody.innerHTML = cardsHtml || `<span class="no-position">Scanning order books for cross-exchange deltas...</span>`;
-  
-  const sessionMs = now % 86400000;
+
+  const sessionMs = Date.now() % 86400000;
   const fakeTotalLogs = Math.floor(sessionMs / 180);
   $('log-ops').textContent = Math.floor(fakeTotalLogs * 0.004);
   $('log-fills').textContent = Math.floor(fakeTotalLogs * 0.0015);
-  $('log-rate').textContent = Math.floor(115 + (now % 20)) + ' evt/s';
+  const secRng = mulberry32(seedFor(Math.floor(Date.now()/1000)) ^ 0xEE);
+  $('log-rate').textContent = Math.floor(115 + secRng()*20) + ' evt/s';
 }
 
+/* ---------- CHART DRAWING ---------- */
 const cvs = $('chart');
 const ctx = cvs.getContext('2d');
+let W=0,H=0,DPR=window.devicePixelRatio||1;
+let mouse = {x:-1,y:-1,inside:false};
 
 function resize(){
   const r = cvs.getBoundingClientRect();
@@ -639,26 +691,19 @@ window.addEventListener('resize',resize);
 cvs.addEventListener('mousemove',e=>{const r=cvs.getBoundingClientRect();mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top;mouse.inside=true;});
 cvs.addEventListener('mouseleave',()=>{mouse.inside=false;});
 
-function drawChart(candles, px, activePos){
-  const r = cvs.getBoundingClientRect();
-  if (r.width !== W || r.height !== H || W < 50 || H < 50) {
-    resize();
-  }
-
+function drawChart(candles, px, activePosition){
   ctx.clearRect(0,0,W,H);
-  const padL=8, padR=60, padT=45, padB=20; 
+  const padL=8, padR=60, padT=45, padB=20;
   const cw = W-padL-padR, ch = H-padT-padB;
   if(cw<50||ch<50) return;
-  if(candles.length<2) return;
+  if(!candles || candles.length<2) return;
 
   let hi=-Infinity, lo=Infinity, vmax=0;
   for(const c of candles){ if(c.h>hi)hi=c.h; if(c.l<lo)lo=c.l; if(c.v>vmax)vmax=c.v; }
-  
-  if (activePos) {
-    if (activePos.entry > hi) hi = activePos.entry;
-    if (activePos.entry < lo) lo = activePos.entry;
+  if (activePosition) {
+    if (activePosition.entry > hi) hi = activePosition.entry;
+    if (activePosition.entry < lo) lo = activePosition.entry;
   }
-
   const pad = (hi-lo)*0.12;
   hi+=pad; lo-=pad;
   const range = hi-lo;
@@ -687,7 +732,7 @@ function drawChart(candles, px, activePos){
   const drawWidth = cw * (1 - rightGapPercent);
   const bw = drawWidth / candles.length;
   const bodyW = Math.max(3, bw*0.75); 
-  
+
   for(let i=0; i<candles.length; i++){
     const c = candles[i];
     const x = padL + i*bw + bw/2;
@@ -698,7 +743,7 @@ function drawChart(candles, px, activePos){
     const yL = padT + (hi-c.l)/range*priceH;
     ctx.strokeStyle = up?'#00884a':'#c62828';
     ctx.fillStyle = up?'#00884a':'#c62828';
-    ctx.lineWidth = 1.5; 
+    ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(x,yH); ctx.lineTo(x,yL); ctx.stroke();
     const yTop = Math.min(yO,yC), bh = Math.max(1.5, Math.abs(yC-yO));
     ctx.fillRect(x-bodyW/2, yTop, bodyW, bh);
@@ -745,9 +790,8 @@ function drawChart(candles, px, activePos){
       const sd = Math.sqrt(s/20);
       upper.push(ema[i]+2*sd); lower.push(ema[i]-2*sd);
     }
-    ctx.beginPath();
-    let started=false;
-    for(let i=0; i<upper.length; i++){
+    ctx.beginPath(); let started=false;
+    for(let i=0;i<upper.length;i++){
       if(upper[i]==null) continue;
       const x = padL + i*bw + bw/2;
       const y = padT + (hi-upper[i])/range*priceH;
@@ -755,7 +799,7 @@ function drawChart(candles, px, activePos){
     }
     ctx.stroke();
     ctx.beginPath(); started=false;
-    for(let i=0; i<lower.length; i++){
+    for(let i=0;i<lower.length;i++){
       if(lower[i]==null) continue;
       const x = padL + i*bw + bw/2;
       const y = padT + (hi-lower[i])/range*priceH;
@@ -787,12 +831,11 @@ function drawChart(candles, px, activePos){
     }
   }
 
-  if (activePos) {
-    const entryY = padT + (hi - activePos.entry) / range * priceH;
+  if (activePosition) {
+    const entryY = padT + (hi - activePosition.entry) / range * priceH;
     if (entryY >= padT && entryY <= padT + priceH) {
-      const activeColor = activePos.type === 'BUY' ? '#00884a' : '#c62828';
-      const labelText = activePos.type === 'BUY' ? 'BUY ENTRY' : 'SELL ENTRY';
-
+      const activeColor = activePosition.type === 'BUY' ? '#00884a' : '#c62828';
+      const labelText = activePosition.type === 'BUY' ? 'BUY ENTRY' : 'SELL ENTRY';
       ctx.strokeStyle = activeColor;
       ctx.setLineDash([4, 4]);
       ctx.lineWidth = 1.5;
@@ -801,7 +844,6 @@ function drawChart(candles, px, activePos){
       ctx.lineTo(padL + cw, entryY);
       ctx.stroke();
       ctx.setLineDash([]);
-
       ctx.fillStyle = activeColor;
       ctx.font = 'bold 10px "SF Mono",Consolas,monospace';
       ctx.fillText(labelText, padL + 10, entryY - 4);
@@ -818,23 +860,28 @@ function drawChart(candles, px, activePos){
   ctx.fillStyle='#888'; ctx.fillText('VOL', padL+178, padT+12);
 }
 
-// --- PARTYKIT MESSAGE LISTENER ---
-socket.addEventListener("message", (event) => {
-  const data = JSON.parse(event.data);
-  currentPrice = data.price;
-  candleHistory = data.candles;
-  activePosition = data.activePosition;
-
-  renderBook(data.book);
-  const tape = genTape(currentPrice, Date.now());
-  renderTape(tape);
-
-  renderLog(data);
-  drawChart(candleHistory, currentPrice, activePosition);
-});
-
+// Initialize layout canvas structure
 resize();
 
+// --- SOCKET LISTENER (RECEIVE SERVER STREAM) ---
+socket.on('market_update', (data) => {
+  const px = data.price;
+  const balance = data.balance;
+  const candles = data.candles;
+  const activePosition = data.activePosition;
+  const bgTrades = data.bgTrades;
+  const book = data.book;
+
+  // Render received updates on screen
+  $('balance-val').textContent = '$' + balance.toFixed(2);
+  
+  renderBook(book);
+  renderTape(genTape(px));
+  renderPositions(activePosition, bgTrades, px);
+  drawChart(candles, px, activePosition);
+});
+
+// ---- Modal Handlers ----
 window.addEventListener('click', function(e) {
   const accessModal = document.getElementById('access-modal');
   const settingsModal = document.getElementById('settings-modal');
@@ -844,7 +891,7 @@ window.addEventListener('click', function(e) {
     e.stopPropagation();
     return;
   }
-  
+
   if (e.target.closest('#filter-btn')) {
     settingsModal.style.display = 'flex';
     e.stopPropagation();
