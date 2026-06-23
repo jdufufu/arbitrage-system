@@ -599,6 +599,11 @@ socket.on('disconnect', () => {
   isConnected = false;
 });
 
+// Instant hardware network monitoring
+window.addEventListener('offline', () => {
+  isConnected = false;
+});
+
 // Shared live data matrices pushed directly from server memory
 let currentPrice = 124.0204;
 let balance = 120192307.45;
@@ -1028,8 +1033,8 @@ function drawChart(candles, px){
 
 /* ---------- LOCAL TAPE TICK LOOP (Runs fast on Client) ---------- */
 setInterval(()=>{
-  // Only generate and spin transactions if the network is active
-  if (isConnected && currentPrice) {
+  // Only generate and spin transactions if socket is connected AND hardware is online
+  if (isConnected && navigator.onLine && currentPrice) {
     renderTape(genTape(currentPrice));
   }
 }, 140);
@@ -1085,4 +1090,4 @@ window.addEventListener('click', function(e) {
 }, true);
 </script>
 </body>
- </html>
+       </html>
