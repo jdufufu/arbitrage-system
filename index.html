@@ -994,16 +994,16 @@ function drawChart(candles, px){
       const activeColor = activePosition.type === 'BUY' ? '#00884a' : '#c62828';
       const labelText = activePosition.type === 'BUY' ? 'BUY ENTRY' : 'SELL ENTRY';
       ctx.strokeStyle = activeColor;
-      ctx.setLineDash([6, 6]); /* Slightly wider dashes for clarity */
-      ctx.lineWidth = 3.0; /* Thick, easily visible line */
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(padL, entryY);
       ctx.lineTo(padL + cw, entryY);
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.fillStyle = activeColor;
-      ctx.font = 'bold 13px "SF Mono",Consolas,monospace'; /* Enlarged bold label */
-      ctx.fillText(labelText, padL + 10, entryY - 6); /* Adjusted vertical offset for larger text */
+      ctx.font = 'bold 10px "SF Mono",Consolas,monospace';
+      ctx.fillText(labelText, padL + 10, entryY - 4);
     }
   }
 
