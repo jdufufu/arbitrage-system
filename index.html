@@ -17,8 +17,8 @@
     color: #111;
     user-select: none;
     font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    font-size: 14px;
-    line-height: 1.3;
+    font-size: 16px; /* Bunted base size to scale up all elements */
+    line-height: 1.35;
   }
 
   .app{
@@ -33,26 +33,26 @@
   .hdr{
     display: flex;
     align-items: center;
-    padding: 0 12px;
+    padding: 0 16px;
     border-bottom: 1px solid #e5e5e5;
     background: #fafafa;
-    gap: 12px;
-    height: 48px;
-    min-height: 48px;
+    gap: 16px;
+    height: 56px;
+    min-height: 56px;
   }
-  .logo{font-weight: 700;font-size: 15px;letter-spacing: .5px;white-space: nowrap;}
+  .logo{font-weight: 700;font-size: 18px;letter-spacing: .5px;white-space: nowrap;}
   .logo span{color: #0066ff;}
-  .sym{font-weight: 600;font-size: 13px;padding: 3px 8px;background: #fff;border: 1px solid #e5e5e5;border-radius: 3px;white-space: nowrap;}
-  .px{font-size: 20px;font-weight: 600;font-variant-numeric: tabular-nums;font-family: "SF Mono",Consolas,Menlo,monospace;color: #111;}
-  .chg{font-size: 12px;font-variant-numeric: tabular-nums;font-family: "SF Mono",Consolas,Menlo,monospace;}
+  .sym{font-weight: 600;font-size: 15px;padding: 4px 10px;background: #fff;border: 1px solid #e5e5e5;border-radius: 3px;white-space: nowrap;}
+  .px{font-size: 24px;font-weight: 600;font-variant-numeric: tabular-nums;font-family: "SF Mono",Consolas,Menlo,monospace;color: #111;}
+  .chg{font-size: 14px;font-variant-numeric: tabular-nums;font-family: "SF Mono",Consolas,Menlo,monospace;}
   .up{color: #00884a;} .dn{color: #c62828;}
-  .stats{display: flex;gap: 12px;margin-left: auto;font-size: 11px;color: #555;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;}
+  .stats{display: flex;gap: 14px;margin-left: auto;font-size: 13px;color: #555;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;}
   .stats b{color: #111;font-weight: 600;font-variant-numeric: tabular-nums;font-family: "SF Mono",Consolas,Menlo,monospace;}
-  .status{display: flex;align-items: center;gap: 6px;font-size: 12px;color: #555;white-space: nowrap;}
+  .status{display: flex;align-items: center;gap: 8px;font-size: 14px;color: #555;white-space: nowrap;}
 
   .dot{
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
     background: #00884a;
     box-shadow: 0 0 6px #00884a;
@@ -81,16 +81,16 @@
     position: relative;
     background: #fff;
     overflow: hidden;
-    flex: 1.6;
+    flex: 1.5;
     min-height: 0;
   }
   #chart{display: block;width: 100%;height: 100%;}
-  .chart-overlay{position: absolute;top: 8px;left: 10px;font-size: 11px;color: #666;pointer-events: none;display: flex;gap: 5px;flex-wrap: wrap;}
-  .tf{display: inline-block;padding: 2px 6px;border: 1px solid #e5e5e5;border-radius: 2px;color: #555;background: #fff;font-size: 11px;font-weight: 500;}
+  .chart-overlay{position: absolute;top: 12px;left: 14px;font-size: 13px;color: #666;pointer-events: none;display: flex;gap: 8px;flex-wrap: wrap;}
+  .tf{display: inline-block;padding: 3px 8px;border: 1px solid #e5e5e5;border-radius: 2px;color: #555;background: #fff;font-size: 12px;font-weight: 600;}
   .tf.active{background: #111;color: #fff;border-color: #111;}
 
   .log{
-    flex: 1;
+    flex: 1.1;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -98,9 +98,9 @@
     background: #fafafa;
     border-top: 1px solid #e5e5e5;
   }
-  .log-head{display: flex;justify-content: space-between;align-items: center;padding: 4px 12px;background: #fff;border-bottom: 1px solid #eee;font-size: 12px;font-weight: 600;letter-spacing: .5px;color: #666;height: 28px;min-height: 28px;}
-  .log-head .title{display: flex;gap: 10px;align-items: center;}
-  .log-head .title b{color: #111;font-family: "SF Mono",Consolas,Menlo,monospace;font-weight: 500;}
+  .log-head{display: flex;justify-content: space-between;align-items: center;padding: 6px 14px;background: #fff;border-bottom: 1px solid #eee;font-size: 14px;font-weight: 700;letter-spacing: .5px;color: #666;height: 38px;min-height: 38px;}
+  .log-head .title{display: flex;gap: 12px;align-items: center;}
+  .log-head .title b{color: #111;font-family: "SF Mono",Consolas,Menlo,monospace;font-weight: 600;}
   .log-head .ops{color: #00884a;}
   .log-head .fills{color: #f57c00;}
 
@@ -116,16 +116,16 @@
     display: flex;
     align-items: center;
     flex: 1;
-    padding: 0 12px;
+    padding: 0 14px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     border-bottom: 1px solid #fafafa;
     font-family: "SF Mono",Consolas,Menlo,monospace;
-    font-size: 11.5px;
+    font-size: 13px;
   }
-  .log-row .ts{color: #888;margin-right:8px;font-size: 10.5px;}
-  .log-row .tag{display: inline-block;padding: 1px 5px;border-radius: 2px;margin-right: 8px;font-size: 9.5px;font-weight: 700;letter-spacing: .5px;color: #fff;}
+  .log-row .ts{color: #888;margin-right:10px;font-size: 12px;}
+  .log-row .tag{display: inline-block;padding: 2px 6px;border-radius: 2px;margin-right: 10px;font-size: 11px;font-weight: 700;letter-spacing: .5px;color: #fff;}
   .log-row .tag.scan{background: #1976d2;}
   .log-row .tag.opp{background: #d32f2f;}
   .log-row .tag.exec{background: #f57c00;}
@@ -140,30 +140,30 @@
   .log-row .val{color: #1976d2;}
 
   .balance-container {
-    padding: 12px 15px;
+    padding: 16px 20px;
     border-bottom: 1px solid #f0f0f0;
     background: #fbfbfb;
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 4px;
   }
   .balance-label {
-    font-size: 10px;
+    font-size: 12px;
     letter-spacing: 1px;
     color: #666;
     font-weight: 700;
   }
   .balance-amount {
-    font-size: 24px;
+    font-size: 32px; /* Scaled up for strong legibility */
     font-weight: 700;
     color: #00884a;
     font-family: "SF Mono",Consolas,Menlo,monospace;
   }
   .position-header {
-    font-size: 10px;
+    font-size: 12px;
     letter-spacing: 1px;
     color: #666;
-    padding: 6px 15px;
+    padding: 10px 20px;
     background: #fafafa;
     border-bottom: 1px solid #eee;
     font-weight: 700;
@@ -174,7 +174,7 @@
     flex-direction: column;
     justify-content: flex-start;
     align-items: center;
-    padding: 10px 15px;
+    padding: 12px 20px;
     font-family: -apple-system, sans-serif;
     color: #555;
     background: #fff;
@@ -184,23 +184,23 @@
   .position-card {
     width: 100%;
     border: 1px solid #e5e5e5;
-    border-radius: 4px;
-    padding: 10px 12px;
+    border-radius: 6px;
+    padding: 14px 16px;
     background: #fafafa;
   }
   .pos-row {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 6px;
-    font-size: 12px;
+    margin-bottom: 8px;
+    font-size: 14px; /* Large readable text */
   }
   .pos-row:last-child { margin-bottom: 0; }
-  .pos-lbl { color: #666; font-weight: 500; }
-  .pos-val { font-family: inherit; font-weight: 600; color: #111; }
+  .pos-lbl { color: #666; font-weight: 600; }
+  .pos-val { font-family: inherit; font-weight: 700; color: #111; }
   .pos-val.up { color: #00884a; }
   .pos-val.dn { color: #c62828; }
   .no-position {
-    font-size: 11px;
+    font-size: 13px;
     color: #888;
     font-style: italic;
     text-align: center;
@@ -209,18 +209,18 @@
   .side{
     display: flex;
     flex-direction: column;
-    width: 240px;
-    min-width: 240px;
+    width: 270px; /* Sized up side panel */
+    min-width: 270px;
     background: #fafafa;
     overflow: hidden;
     min-height: 0;
   }
   .panel{display: flex;flex-direction: column;overflow: hidden;flex: 1;min-height: 0;}
-  .panel-title{font-size: 10px;letter-spacing: 1px;color: #666;padding: 5px 12px;background: #fff;border-bottom: 1px solid #eee;display: flex;justify-content: space-between;font-weight: 600;height: 26px;min-height: 26px;}
-  .panel-title b{color: #111;font-family: "SF Mono",Consolas,Menlo,monospace;font-weight: 500;}
+  .panel-title{font-size: 12px;letter-spacing: 1px;color: #666;padding: 8px 14px;background: #fff;border-bottom: 1px solid #eee;display: flex;justify-content: space-between;font-weight: 700;height: 34px;min-height: 34px;}
+  .panel-title b{color: #111;font-family: "SF Mono",Consolas,Menlo,monospace;font-weight: 600;}
 
   .ob{flex: 1;display: flex;flex-direction: column;overflow: hidden;min-height: 0;}
-  .ob-head{display: grid;grid-template-columns: 1fr 1fr 1fr;font-size: 10px;color: #888;padding: 3px 12px;letter-spacing: 1px;background: #fff;border-bottom: 1px solid #eee;height: 20px;min-height: 20px;}
+  .ob-head{display: grid;grid-template-columns: 1fr 1fr 1fr;font-size: 11px;color: #888;padding: 6px 14px;letter-spacing: 1px;background: #fff;border-bottom: 1px solid #eee;height: 24px;min-height: 24px;}
   .ob-head span:last-child{text-align: right;}
   .ob-head span:nth-child(2){text-align: center;}
 
@@ -241,8 +241,8 @@
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
     align-items: center;
-    font-size: 11px;
-    padding: 0 12px;
+    font-size: 13px; /* Highly visible quotes */
+    padding: 0 14px;
     position: relative;
     font-variant-numeric: tabular-nums;
     flex: 1;
@@ -256,7 +256,7 @@
   .ob-ask .bar{background: #c62828;}
   .ob-bid .ob-row span:first-child{color: #00884a;}
   .ob-bid .bar{background: #00884a;}
-  .ob-spread{display: flex;justify-content: space-between;align-items: center;padding: 0 12px;font-size: 11px;background: #f0f4ff;border-top: 1px solid #e5e5e5;border-bottom: 1px solid #e5e5e5;color: #555;height: 24px;min-height: 24px;}
+  .ob-spread{display: flex;justify-content: space-between;align-items: center;padding: 0 14px;font-size: 13px;background: #f0f4ff;border-top: 1px solid #e5e5e5;border-bottom: 1px solid #e5e5e5;color: #555;height: 30px;min-height: 30px;}
   .ob-spread b{color: #111;font-family: "SF Mono",Consolas,Menlo,monospace;}
 
   .tape{
@@ -265,10 +265,10 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    height: 110px; 
-    min-height: 110px;
+    height: 130px; /* Taller tape module */
+    min-height: 130px;
   }
-  .tape-head{display: grid;grid-template-columns: 110px 90px 80px 1fr 100px;font-size: 10px;color: #888;padding: 5px 14px;letter-spacing: 1px;background: #fafafa;border-bottom: 1px solid #eee;font-weight: 600;height: 24px;min-height: 24px;}
+  .tape-head{display: grid;grid-template-columns: 110px 90px 80px 1fr 100px;font-size: 11px;color: #888;padding: 6px 16px;letter-spacing: 1px;background: #fafafa;border-bottom: 1px solid #eee;font-weight: 700;height: 28px;min-height: 28px;}
   .tape-head span:nth-child(2),.tape-head span:nth-child(3),.tape-head span:nth-child(5){text-align: right;}
 
   .tape-body{
@@ -282,8 +282,8 @@
     display: grid;
     grid-template-columns: 110px 90px 80px 1fr 100px;
     align-items: center;
-    font-size: 11px;
-    padding: 0 14px;
+    font-size: 13px;
+    padding: 0 16px;
     font-variant-numeric: tabular-nums;
     font-family: "SF Mono",Consolas,Menlo,monospace;
     flex: 1;
@@ -292,23 +292,23 @@
   .tape-row span:nth-child(2),.tape-row span:nth-child(3),.tape-row span:nth-child(5){text-align: right;}
   .tape-row.buy span:nth-child(2){color: #00884a;}
   .tape-row.sell span:nth-child(2){color: #c62828;}
-  .tape-row span:nth-child(4){color: #555;font-size: 11px;font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}
+  .tape-row span:nth-child(4){color: #555;font-size: 13px;font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}
 
   .tel{
     display: flex;
     align-items: center;
-    padding: 0 12px;
+    padding: 0 14px;
     background: #111;
     color: #cfd8dc;
-    font-size: 10px;
-    gap: 14px;
+    font-size: 11px;
+    gap: 16px;
     border-top: 1px solid #000;
     overflow: hidden;
     white-space: nowrap;
-    height: 24px;
-    min-height: 24px;
+    height: 28px;
+    min-height: 28px;
   }
-  .tel .k{color: #78909c;margin-right: 3px;}
+  .tel .k{color: #78909c;margin-right: 4px;}
   .tel .v{color: #4fc3f7;font-family: "SF Mono",Consolas,Menlo,monospace;font-variant-numeric: tabular-nums;}
   .tel .g{color: #81c784;}
   .tel .y{color: #ffb74d;}
@@ -327,11 +327,11 @@
   }
   .modal-box {
     background: #fff;
-    width: 320px;
+    width: 340px;
     padding: 60px 24px 24px;
     position: relative;
     text-align: center;
-    border-radius: 2px;
+    border-radius: 4px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
   }
   .modal-icon {
@@ -373,30 +373,30 @@
 
   .chart-logo { 
     position: absolute; 
-    bottom: 195px;
-    right: 60px;
-    height: 65px;
+    bottom: 220px;
+    right: 80px;
+    height: 80px; /* Scaled up chart watermark watermark */
     filter: drop-shadow(0px 3px 6px rgba(0,0,0,0.0));
     opacity: 0.85; 
     pointer-events: none; 
     z-index: 10; 
   }
   .log { position: relative; }
-  .filter-btn { position: absolute; bottom: 15px; right: 15px; width: 44px; height: 44px; background: #9e9e9e; border-radius: 50%; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.4); cursor: pointer; z-index: 10; border: none; outline: none; }
-  .filter-btn svg { width: 24px; height: 24px; fill: #222; }
+  .filter-btn { position: absolute; bottom: 20px; right: 20px; width: 50px; height: 50px; background: #9e9e9e; border-radius: 50%; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.4); cursor: pointer; z-index: 10; border: none; outline: none; }
+  .filter-btn svg { width: 28px; height: 28px; fill: #222; }
 
   .settings-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(0,0,0,0.5); z-index: 9998; display: none; justify-content: center; align-items: center; }
-  .settings-box { background: #fff; width: 310px; border-radius: 16px; padding: 20px 24px; position: relative; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+  .settings-box { background: #fff; width: 320px; border-radius: 16px; padding: 24px 28px; position: relative; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
   .settings-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-  .settings-title { font-size: 20px; font-weight: 500; font-family: -apple-system, sans-serif; color: #111; }
-  .settings-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #111; padding: 0; line-height: 1; }
-  .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #f0f0f0; font-size: 16px; color: #111; font-family: -apple-system, sans-serif; }
+  .settings-title { font-size: 22px; font-weight: 600; font-family: -apple-system, sans-serif; color: #111; }
+  .settings-close { background: none; border: none; font-size: 26px; cursor: pointer; color: #111; padding: 0; line-height: 1; }
+  .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #f0f0f0; font-size: 18px; color: #111; font-family: -apple-system, sans-serif; }
   .setting-row:last-child { border-bottom: none; }
 
-  .toggle { width: 46px; height: 26px; background: #e5e5e5; border-radius: 13px; position: relative; cursor: pointer; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); }
-  .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; background: #fff; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+  .toggle { width: 50px; height: 28px; background: #e5e5e5; border-radius: 14px; position: relative; cursor: pointer; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); }
+  .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 24px; height: 24px; background: #fff; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
   .toggle.active { background: #34c759; }
-  .toggle.active::after { transform: translateX(20px); }
+  .toggle.active::after { transform: translateX(22px); }
 </style>
 </head>
 <body>
@@ -449,7 +449,7 @@
         <canvas id="chart"></canvas>
         <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Picsart_26-06-18_22-57-40-171-DM4x8BhOb95hDZH8SPlbkJBVTTRouO.png" class="chart-logo" alt="logo">
         <div class="chart-overlay">
-          <span class="tf" style="border: none; background: transparent; font-size: 14px; font-weight: 800; color: #111; padding-left: 0; padding-right: 10px;">Coin-239</span>
+          <span class="tf" style="border: none; background: transparent; font-size: 15px; font-weight: 800; color: #111; padding-left: 0; padding-right: 12px;">Coin-239</span>
           <span class="tf active">REALTIME</span>
           <span class="tf">LINEAR</span>
           <span class="tf">LOG</span>
@@ -655,11 +655,11 @@ function renderLog() {
 
     cardsHtml += `
       <div class="position-card" style="margin-bottom: 6px; width: 100%; flex-shrink: 0;">
-        <div class="pos-row" style="font-size: 11px;">
+        <div class="pos-row" style="font-size: 14px;">
           <span class="pos-lbl" style="font-weight: bold;">ARB-8472 · Coin-1</span>
           <span class="pos-val ${labelColorClass}" style="font-weight:bold;">${statusText}</span>
         </div>
-        <div class="pos-row" style="font-size: 10.5px; opacity: 0.85;">
+        <div class="pos-row" style="font-size: 12.5px; opacity: 0.85;">
           <span class="pos-lbl">ENTRY: $${fmt(activePosition.entry)}</span>
           <span class="pos-val ${pnlColorClass}">${formattedPnl}</span>
         </div>
@@ -685,11 +685,11 @@ function renderLog() {
 
     cardsHtml += `
       <div class="position-card" style="margin-bottom: 6px; width: 100%; flex-shrink: 0;">
-        <div class="pos-row" style="font-size: 11px;">
+        <div class="pos-row" style="font-size: 14px;">
           <span class="pos-lbl">${t.id} · ${t.asset}</span>
           <span class="pos-val ${labelColorClass}" style="font-weight:bold;">${statusText}</span>
         </div>
-        <div class="pos-row" style="font-size: 10.5px; opacity: 0.85;">
+        <div class="pos-row" style="font-size: 12.5px; opacity: 0.85;">
           <span class="pos-lbl">SIZE: ${t.size}</span>
           <span class="pos-val ${pnlColorClass}">${formattedPnl}</span>
         </div>
@@ -725,13 +725,17 @@ cvs.addEventListener('mouseleave',()=>{mouse.inside=false;});
 
 function drawChart(candles, px){
   ctx.clearRect(0,0,W,H);
-  const padL=8, padR=60, padT=45, padB=20;
+  const padL=8, padR=70, padT=45, padB=20; /* Increased margin for larger labels */
   const cw = W-padL-padR, ch = H-padT-padB;
   if(cw<50||ch<50) return;
   if(candles.length<2) return;
 
+  // Zoomed-in perspective limit: Use the last 26 candles instead of 48
+  const limitCount = 26;
+  const slicedCandles = candles.slice(-limitCount);
+
   let hi=-Infinity, lo=Infinity, vmax=0;
-  for(const c of candles){ if(c.h>hi)hi=c.h; if(c.l<lo)lo=c.l; if(c.v>vmax)vmax=c.v; }
+  for(const c of slicedCandles){ if(c.h>hi)hi=c.h; if(c.l<lo)lo=c.l; if(c.v>vmax)vmax=c.v; }
   if (activePosition) {
     if (activePosition.entry > hi) hi = activePosition.entry;
     if (activePosition.entry < lo) lo = activePosition.entry;
@@ -741,14 +745,14 @@ function drawChart(candles, px){
   const range = hi-lo;
 
   ctx.strokeStyle='#f0f0f0'; ctx.lineWidth=1;
-  ctx.font='11px -apple-system,Segoe UI,sans-serif'; 
+  ctx.font='13px -apple-system,Segoe UI,sans-serif'; /* Bunted price labels */
   ctx.fillStyle='#999';
   const gridY = 6;
   for(let i=0;i<=gridY;i++){
     const y = padT + ch*i/gridY;
     ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(padL+cw,y); ctx.stroke();
     const pv = hi - range*i/gridY;
-    ctx.fillText(fmt(pv), padL+cw+5, y+3);
+    ctx.fillText(fmt(pv), padL+cw+5, y+4);
   }
   const gridX = 8;
   for(let i=0;i<=gridX;i++){
@@ -762,11 +766,11 @@ function drawChart(candles, px){
 
   const rightGapPercent = 0.15;
   const drawWidth = cw * (1 - rightGapPercent);
-  const bw = drawWidth / candles.length;
-  const bodyW = Math.max(3, bw*0.75); 
+  const bw = drawWidth / slicedCandles.length;
+  const bodyW = Math.max(5, bw*0.75); /* Wider candles */
 
-  for(let i=0; i<candles.length; i++){
-    const c = candles[i];
+  for(let i=0; i<slicedCandles.length; i++){
+    const c = slicedCandles[i];
     const x = padL + i*bw + bw/2;
     const up = c.c>=c.o;
     const yO = padT + (hi-c.o)/range*priceH;
@@ -775,9 +779,9 @@ function drawChart(candles, px){
     const yL = padT + (hi-c.l)/range*priceH;
     ctx.strokeStyle = up?'#00884a':'#c62828';
     ctx.fillStyle = up?'#00884a':'#c62828';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2; /* Stronger wicks */
     ctx.beginPath(); ctx.moveTo(x,yH); ctx.lineTo(x,yL); ctx.stroke();
-    const yTop = Math.min(yO,yC), bh = Math.max(1.5, Math.abs(yC-yO));
+    const yTop = Math.min(yO,yC), bh = Math.max(2, Math.abs(yC-yO));
     ctx.fillRect(x-bodyW/2, yTop, bodyW, bh);
     const vh = (c.v/vmax)*volH;
     ctx.globalAlpha = 0.35;
@@ -786,10 +790,10 @@ function drawChart(candles, px){
   }
 
   let cumPV=0, cumV=0;
-  ctx.strokeStyle='#0066ff'; ctx.lineWidth=1.5;
+  ctx.strokeStyle='#0066ff'; ctx.lineWidth=2;
   ctx.beginPath();
-  for(let i=0;i<candles.length;i++){
-    const c=candles[i]; cumPV+=(c.h+c.l+c.c)/3*c.v; cumV+=c.v;
+  for(let i=0;i<slicedCandles.length;i++){
+    const c=slicedCandles[i]; cumPV+=(c.h+c.l+c.c)/3*c.v; cumV+=c.v;
     const vwap = cumV>0? cumPV/cumV : c.c;
     const x = padL + i*bw + bw/2;
     const y = padT + (hi-vwap)/range*priceH;
@@ -798,11 +802,11 @@ function drawChart(candles, px){
   ctx.stroke();
 
   const ema = []; let k=2/21;
-  for(let i=0;i<candles.length;i++){
-    const v = candles[i].c;
+  for(let i=0;i<slicedCandles.length;i++){
+    const v = slicedCandles[i].c;
     ema.push(i===0?v: v*k + ema[i-1]*(1-k));
   }
-  ctx.strokeStyle='#ff8a00'; ctx.lineWidth=1.3;
+  ctx.strokeStyle='#ff8a00'; ctx.lineWidth=1.5;
   ctx.setLineDash([3,3]);
   ctx.beginPath();
   for(let i=0;i<ema.length;i++){
@@ -818,7 +822,7 @@ function drawChart(candles, px){
     const upper=[], lower=[];
     for(let i=0;i<ema.length;i++){
       if(i<19){upper.push(null);lower.push(null);continue;}
-      let s=0; for(let j=i-19;j<=i;j++) s+=(candles[j].c-ema[i])**2;
+      let s=0; for(let j=i-19;j<=i;j++) s+=(slicedCandles[j].c-ema[i])**2;
       const sd = Math.sqrt(s/20);
       upper.push(ema[i]+2*sd); lower.push(ema[i]-2*sd);
     }
@@ -845,9 +849,9 @@ function drawChart(candles, px){
   ctx.beginPath(); ctx.moveTo(padL,lastY); ctx.lineTo(padL+cw,lastY); ctx.stroke();
   ctx.setLineDash([]);
   ctx.fillStyle='#111';
-  ctx.fillRect(padL+cw, lastY-8, padR-3, 16);
+  ctx.fillRect(padL+cw, lastY-10, padR-3, 20);
   ctx.fillStyle='#fff';
-  ctx.font='bold 11px "SF Mono",Consolas,monospace';
+  ctx.font='bold 13px "SF Mono",Consolas,monospace';
   ctx.fillText(fmt(px), padL+cw+5, lastY+4);
 
   if(mouse.inside && mouse.x>padL && mouse.x<padL+cw && mouse.y>padT && mouse.y<padT+ch){
@@ -857,9 +861,9 @@ function drawChart(candles, px){
     ctx.setLineDash([]);
     const pv = hi - (mouse.y-padT)/priceH*range;
     if(pv>lo && pv<hi){
-      ctx.fillStyle='#111'; ctx.fillRect(padL+cw, mouse.y-8, padR-3, 16);
-      ctx.fillStyle='#fff'; ctx.font='11px "SF Mono",Consolas,monospace';
-      ctx.fillText(fmt(pv), padL+cw+5, mouse.y+3);
+      ctx.fillStyle='#111'; ctx.fillRect(padL+cw, mouse.y-10, padR-3, 20);
+      ctx.fillStyle='#fff'; ctx.font='13px "SF Mono",Consolas,monospace';
+      ctx.fillText(fmt(pv), padL+cw+5, mouse.y+4);
     }
   }
 
@@ -877,7 +881,7 @@ function drawChart(candles, px){
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.fillStyle = activeColor;
-      ctx.font = 'bold 10px "SF Mono",Consolas,monospace';
+      ctx.font = 'bold 12px "SF Mono",Consolas,monospace';
       ctx.fillText(labelText, padL + 10, entryY - 4);
     }
   }
@@ -885,16 +889,14 @@ function drawChart(candles, px){
   ctx.strokeStyle='#e5e5e5'; ctx.lineWidth=1;
   ctx.strokeRect(padL, padT, cw, ch);
 
-  ctx.font='10px -apple-system,Segoe UI,sans-serif';
-  ctx.fillStyle='#0066ff'; ctx.fillText('— VWAP', padL+10, padT+12);
-  ctx.fillStyle='#ff8a00'; ctx.fillText('-- EMA20', padL+58, padT+12);
-  ctx.fillStyle='#64b5f6'; ctx.fillText('± BB(20,2)', padL+112, padT+12);
-  ctx.fillStyle='#888'; ctx.fillText('VOL', padL+178, padT+12);
+  ctx.font='12px -apple-system,Segoe UI,sans-serif';
+  ctx.fillStyle='#0066ff'; ctx.fillText('— VWAP', padL+10, padT+14);
+  ctx.fillStyle='#ff8a00'; ctx.fillText('-- EMA20', padL+70, padT+14);
+  ctx.fillStyle='#64b5f6'; ctx.fillText('± BB(20,2)', padL+135, padT+14);
+  ctx.fillStyle='#888'; ctx.fillText('VOL', padL+210, padT+14);
 }
 
 /* ---------- LOCAL TAPE TICK LOOP (Runs fast on Client) ---------- */
-// The server keeps the prices synchronized, while the client maintains 
-// its fast-scrolling transaction log locally for high performance.
 setInterval(()=>{
   if (currentPrice) {
     renderTape(genTape(currentPrice));
@@ -952,4 +954,4 @@ window.addEventListener('click', function(e) {
 }, true);
 </script>
 </body>
-  </html>
+ </html>
