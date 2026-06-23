@@ -374,7 +374,7 @@
 
   .chart-logo { 
     position: absolute; 
-    bottom: 120px; /* Moved down closer to the bottom section */
+    bottom: 165px; 
     right: 60px;
     height: 60px;
     filter: drop-shadow(0px 3px 6px rgba(0,0,0,0.0));
@@ -543,7 +543,7 @@ let activePosition = null;
 let bgTrades = [];
 let lastActivePositionId = null;
 
-// Synthetic programmatical metallic "Ting" sound effect
+// High-volume metallic synthetic ting sound effect
 function playTingSound() {
   try {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -553,17 +553,19 @@ function playTingSound() {
     oscillator.connect(gainNode);
     gainNode.connect(audioCtx.destination);
     
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(1400, audioCtx.currentTime); // Realistic high-pitched metallic sound
-    oscillator.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.12);
+    // Using 'triangle' type oscillator for much louder, brighter, and punchier speaker output
+    oscillator.type = 'triangle';
+    oscillator.frequency.setValueAtTime(1800, audioCtx.currentTime); 
+    oscillator.frequency.exponentialRampToValueAtTime(900, audioCtx.currentTime + 0.08);
     
-    gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+    // Increased base gain volume to 0.45 for high audibility
+    gainNode.gain.setValueAtTime(0.45, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
     
     oscillator.start();
-    oscillator.stop(audioCtx.currentTime + 0.16);
+    oscillator.stop(audioCtx.currentTime + 0.13);
   } catch (err) {
-    console.log("Audio block: Click screen to enable sound.");
+    console.log("Audio block: Click screen once to unlock browser audio.");
   }
 }
 
