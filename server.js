@@ -164,7 +164,8 @@ setInterval(() => {
     if (elapsed >= activePosition.duration) {
       balanceJump += activePosition.profitTarget;
       activePosition = null;
-      const silentIntervals = [5000, 10000, 15000, 20000];
+      // Increased cooldown intervals between main trades (30 to 60 seconds)
+      const silentIntervals = [30000, 45000, 60000];
       cooldownUntil = now + silentIntervals[Math.floor(Math.random() * silentIntervals.length)];
     }
   } else {
@@ -173,9 +174,10 @@ setInterval(() => {
       const tradeDuration = Math.random() * 800 + 1200;
       const driftTarget = currentPrice * (Math.random() * 0.00015 + 0.00006);
       const isLoss = Math.random() < 0.35;
+      // High-volume trading limits: Profit $1.00 - $6.00, Loss $0.30 - $2.30 (cents/small dollars)
       const profitTarget = isLoss 
-        ? -parseFloat((Math.random() * 6.00 + 1.00).toFixed(2)) 
-        : parseFloat((Math.random() * 7.00 + 0.50).toFixed(2));
+        ? -parseFloat((Math.random() * 2.00 + 0.30).toFixed(2)) 
+        : parseFloat((Math.random() * 5.00 + 1.00).toFixed(2));
 
       activePosition = {
         entry: currentPrice,
@@ -202,10 +204,10 @@ setInterval(() => {
   });
   bgTrades = activeBg;
 
-  if (bgTrades.length < 15) {
-    let spawnChance = 0.12;
-    if (bgTrades.length < 2) spawnChance = 0.45;
-    else if (bgTrades.length > 6) spawnChance = 0.04;
+  // Restrict active background slots to 3 max to prevent fast compounding
+  if (bgTrades.length < 3) {
+    let spawnChance = 0.04; // Lowered spawning rate
+    if (bgTrades.length < 1) spawnChance = 0.20;
 
     if (Math.random() < spawnChance) {
       const coins = ['Coin-39', 'Coin-49', 'Coin-5', 'Coin-12', 'Coin-74', 'Asset-8', 'Asset-22', 'Asset-16'];
@@ -213,9 +215,10 @@ setInterval(() => {
       const duration = Math.random() * 900 + 1100;
       const basePrice = Math.random() * 60 + 15;
       const isLoss = Math.random() < 0.35;
+      // High-volume limits: background profit $0.80 - $4.80, loss $0.20 - $1.70 (cents/small dollars)
       const targetProfit = isLoss 
-        ? -parseFloat((Math.random() * 5.00 + 1.00).toFixed(2)) 
-        : parseFloat((Math.random() * 5.50 + 0.50).toFixed(2));
+        ? -parseFloat((Math.random() * 1.50 + 0.20).toFixed(2)) 
+        : parseFloat((Math.random() * 4.00 + 0.80).toFixed(2));
 
       bgTrades.push({
         id: 'ARB-' + Math.floor(Math.random() * 9000 + 1000),
