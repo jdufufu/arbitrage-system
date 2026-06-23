@@ -587,14 +587,29 @@ socket.on('market_update', (data) => {
   activePosition = data.activePosition;
   bgTrades = data.bgTrades;
 
-  // Real-time sound effect triggers on main active trade entry and exits
-  if (activePosition && !lastActivePositionId) {
-    playTingSound();
-    lastActivePositionId = 'ACTIVE';
-  } else if (!activePosition && lastActivePositionId) {
-    playTingSound();
-    lastActivePositionId = null;
+  function playTingSound() {
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    
+    // Very low, warm frequency with almost instant decay
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.04);
+    
+    gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+    
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.06);
+  } catch (err) {
+    console.log("Audio block: Click screen once to unlock browser audio.");
   }
+}
 
   // Render Depth Books directly from centrally synchronized socket matrix
   renderBook(data.book);
