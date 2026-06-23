@@ -589,6 +589,15 @@ const fmtK = n => n>=1e9?(n/1e9).toFixed(2)+'B':n>=1e6?(n/1e6).toFixed(2)+'M':n>
 
 // Initialize Socket connection to Railway Web Service
 const socket = io();
+let isConnected = false; // Tracks if the user is actively online and connected
+
+socket.on('connect', () => {
+  isConnected = true;
+});
+
+socket.on('disconnect', () => {
+  isConnected = false;
+});
 
 // Shared live data matrices pushed directly from server memory
 let currentPrice = 124.0204;
@@ -1019,7 +1028,8 @@ function drawChart(candles, px){
 
 /* ---------- LOCAL TAPE TICK LOOP (Runs fast on Client) ---------- */
 setInterval(()=>{
-  if (currentPrice) {
+  // Only generate and spin transactions if the network is active
+  if (isConnected && currentPrice) {
     renderTape(genTape(currentPrice));
   }
 }, 140);
